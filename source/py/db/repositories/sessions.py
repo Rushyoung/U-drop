@@ -20,6 +20,14 @@ class SessionRepository(RepositoryBase):
         cursor = self.conn.execute("SELECT * FROM sessions WHERE bearer_token = ?", (bearer_token,))
         return cursor.fetchone()
 
+    def get_by_user_and_device(self, user_uuid: str, device_id: str) -> sqlite3.Row | None:
+        """根据用户ID和设备ID查询唯一的会话Token"""
+        cursor = self.conn.execute(
+            "SELECT * FROM sessions WHERE user_uuid = ? AND device_id = ?",
+            (user_uuid, device_id)
+        )
+        return cursor.fetchone()
+
     def delete_by_token(self, bearer_token: str) -> int:
         cursor = self.conn.execute("DELETE FROM sessions WHERE bearer_token = ?", (bearer_token,))
         return cursor.rowcount

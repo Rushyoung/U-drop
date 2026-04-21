@@ -62,21 +62,27 @@ class AuthService:
         if not AuthManager.verify_password_hash(password, info.password_hash):
             # [TODO] too
             raise LoginError
-        token = secrets.token_urlsafe(32)
-        self.sessions.create_session(
-            token, 
-            info.uuid, 
-            device_id, 
-            get_time()+ONE_DAY * info.expire_set
+        row = self.sessions.get_by_user_and_device(info.uuid, device_id)
+        if row is None:
+            token = secrets.token_urlsafe(32)
+            self.sessions.create_session(
+                token, 
+                info.uuid, 
+                device_id, 
+                get_time()+ONE_DAY * info.expire_set
+                )
+            self.devices.create_device(
+                device_id,
+                info.uuid,
+                device_type,
+                device_name if device_name else "未知设备名称",
+                get_time()
             )
-        self.devices.create_device(
-            device_id,
-            info.uuid,
-            device_type,
-            device_name if device_name else "未知设备名称",
-            get_time()
-        )
+        else:
+            token = row["bearer_token"]
         return LoginResponse(code="200", bearer=token, msg=f"{info.account}登陆成功")
+        
+
         # raise NotImplementedError
     
     def is_active_user(
