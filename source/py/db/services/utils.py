@@ -1,6 +1,6 @@
 from passlib.context import CryptContext
 import time
-pwd_content = CryptContext(schemes=["argon2"], deprecated = "auto")
+pwd_content = CryptContext(schemes=["argon2"], deprecated = "auto", argon2__time_cost=2,)
 
 ONE_DAY = 86400
 
