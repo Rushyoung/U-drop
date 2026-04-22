@@ -63,3 +63,10 @@ class MessageRepository(RepositoryBase):
             (message_id,),
         )
         return cursor.rowcount
+
+    def update_file_hash(self, message_id: int, file_hash: str) -> int:
+        cursor = self.conn.execute(
+            "UPDATE messages SET file_hash = ? WHERE id = ?",
+            (file_hash, message_id),
+        )
+        return cursor.rowcount

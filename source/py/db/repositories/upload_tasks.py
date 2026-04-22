@@ -12,13 +12,14 @@ class UploadTaskRepository(RepositoryBase):
         received_size: int,
         total_size: int,
         created_at: int,
+        message_id: int | None = None,
     ) -> None:
         self.conn.execute(
             """
-            INSERT INTO upload_tasks (upload_id, user_uuid, temp_path, received_size, total_size, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO upload_tasks (upload_id, user_uuid, temp_path, received_size, total_size, created_at, message_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (upload_id, user_uuid, temp_path, received_size, total_size, created_at),
+            (upload_id, user_uuid, temp_path, received_size, total_size, created_at, message_id),
         )
 
     def get_by_upload_id(self, upload_id: str) -> sqlite3.Row | None:
