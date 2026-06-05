@@ -215,7 +215,7 @@ async def system_guard_middleware(request: Request, call_next):
             if not SystemGuard.is_feature_enabled("initialized"):
                 return JSONResponse(
                     status_code=403,
-                    content=ResponseSchema.error("System not initialized.", 403).model_dump()
+                    content=ResponseSchema.fail("System not initialized.", 403).model_dump()
                 )
 
     # --- 2. 动态功能开关拦截 (@feature_gate) ---
@@ -230,7 +230,7 @@ async def system_guard_middleware(request: Request, call_next):
                     logger.warning(f"功能拦截 | 用户试图访问已禁用的功能: {feature_name} | 路径: {path}")
                     return JSONResponse(
                         status_code=403,
-                        content=ResponseSchema.error(f"Feature '{feature_name}' is disabled.", 403).model_dump()
+                        content=ResponseSchema.fail(f"Feature '{feature_name}' is disabled.", 403).model_dump()
                     )
             break
 
@@ -250,7 +250,7 @@ async def udrop_exception_handler(req: Request, exc: UdropException):
     logger.warning(f"业务异常: {exc.message} (Code: {exc.code}) | 路径: {req.url.path}")
     return JSONResponse(
         status_code=exc.code, 
-        content=ResponseSchema.error(exc.message, exc.code).model_dump()
+        content=ResponseSchema.fail(exc.message, exc.code).model_dump()
     )
 
 @app.exception_handler(FastAPIHTTPException)
@@ -259,7 +259,7 @@ async def http_exception_handler(req: Request, exc: FastAPIHTTPException | Starl
     """统一处理标准 HTTP 异常，防止被全局 Exception 处理器捕获为 500"""
     return JSONResponse(
         status_code=exc.status_code,
-        content=ResponseSchema.error(exc.detail, exc.status_code).model_dump()
+        content=ResponseSchema.fail(exc.detail, exc.status_code).model_dump()
     )
 
 @app.exception_handler(Exception)
@@ -268,7 +268,7 @@ async def global_exception_handler(req: Request, exc: Exception):
     logger.exception(f"系统未捕获异常: {str(exc)} | 触发路径: {req.url.path}")
     return JSONResponse(
         status_code=500, 
-        content=ResponseSchema.error("Internal Server Error", 500).model_dump()
+        content=ResponseSchema.fail("Internal Server Error", 500).model_dump()
     )
 
 app.include_router(router, prefix="/api/v1")
@@ -294,7 +294,7 @@ async def serve_vue_app(catchall: str):
     if catchall.startswith(("api/", "docs", "openapi.json")):
         return JSONResponse(
             status_code=404, 
-            content=ResponseSchema.error("Not found", 404).model_dump()
+            content=ResponseSchema.fail("Not found", 404).model_dump()
         )
         
     # 2. 检查前端产物是否存在
