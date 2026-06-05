@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>U-Drop WebSocket Test</title>
+    <style>
+        body { font-family: monospace; background: #1a1a1a; color: #0f0; padding: 20px; }
+        #log { height: 400px; overflow-y: scroll; border: 1px solid #333; padding: 10px; margin-bottom: 10px; }
+        .input-group { margin-bottom: 10px; }
+        input { background: #333; color: #fff; border: 1px solid #555; padding: 5px; width: 300px; }
+        button { background: #0f0; color: #000; border: none; padding: 5px 15px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>U-Drop Signaling Channel</h1>
+    
+    <div class="input-group">
+        <input type="text" id="token" placeholder="Enter Bearer Token (without 'Bearer ')">
+        <button onclick="connect()">Connect WS</button>
+    </div>
+
+    <div id="log"></div>
+
+    <div class="input-group">
+        <button onclick="ping()">Send PING</button>
+    </div>
+
+    <script>
+        let ws;
+        const logDiv = document.getElementById('log');
+
+        function log(msg, type='INFO') {
+            const time = new Date().toLocaleTimeString();
+            const p = document.createElement('p');
+            p.textContent = `[${time}] [${type}] ${msg}`;
+            logDiv.appendChild(p);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function connect() {
+            const token = document.getElementById('token').value;
+            if (!token) return alert('Please enter a token');
+            
+            const wsUrl = `ws://${window.location.host}/api/v1/ws?token=${token}`;
+            log(`Connecting to ${wsUrl}...`);
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                log('Connection established!', 'SUCCESS');
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                log(`RECV: ${JSON.stringify(data)}`, 'WS');
+            };
+
+            ws.onclose = (event) => {
+                log(`Disconnected (Code: ${event.code})`, 'WARNING');
+            };
+
+            ws.onerror = (error) => {
+                log(`Error: ${error.message}`, 'ERROR');
+            };
+        }
+
+        function ping() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({type: 'PING'}));
+                log('SENT: PING');
+            } else {
+                log('WS is not connected', 'ERROR');
+            }
+        }
+    </script>
+</body>
+</html>
