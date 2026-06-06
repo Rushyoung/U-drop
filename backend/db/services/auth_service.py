@@ -266,7 +266,7 @@ class AuthService:
         # 故意保留 devices 表中的记录，以防止级联删除关联的 messages
         self.sessions.delete_by_device_id(device_id)
         
-        logger.warning(f"设备已下线 | 用户 {user_uuid[:8]} 使得设备 {device_id[:8]} ({device.get('device_name')}) 的会话失效。清理了 {kicked_count} 个 Token。")
+        logger.warning(f"设备已下线 | 用户 {user_uuid[:8]} 使得设备 {device_id[:8]} ({device['device_name']}) 的会话失效。清理了 {kicked_count} 个 Token。")
         return True
 
     def admin_update_quota(self, admin_uuid: str, target_uuid: str, storage_quota: int):
