@@ -1,4 +1,3 @@
-from functools import wraps
 from typing import Dict, Any, Callable
 from core.logger import logger
 
@@ -40,19 +39,12 @@ class SystemGuard:
 def feature_gate(name: str):
     """
     功能闸门装饰器：函数主动注册受控字段。
-    用法:
-        @router.post("/register")
-        @feature_gate("allow_registration")
-        async def register(...):
+    仅用于在函数对象上打标，拦截逻辑由 main.py 中的中间件统一处理。
     """
     def decorator(func: Callable):
         # 在函数对象上打标，中间件会读取此标记
         setattr(func, "_udrop_feature", name)
-        
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            return await func(*args, **kwargs)
-        return wrapper
+        return func
     return decorator
 
 # 全局单例标识
