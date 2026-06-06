@@ -1,9 +1,6 @@
 @echo off
 rem U-Drop Native Core 编译脚本 (Windows MSVC 版)
-rem 需在 Visual Studio Developer Command Prompt 或 Native Tools Command Prompt 中运行
-rem 用法:
-rem   compile.bat          (编译 thumbnail.dll)
-rem   compile.bat clean    (清理构建产物)
+rem 需在 "x64 Native Tools Command Prompt for VS 2022" 中运行
 
 chcp 65001 >nul
 setlocal enabledelayedexpansion
@@ -14,13 +11,25 @@ if /I "%~1"=="--help" goto :usage
 if /I "%~1"=="/?" goto :usage
 
 rem ---------------------------------------------------------------------------
+rem 检查架构 (防止 WinError 193)
+rem ---------------------------------------------------------------------------
+if /I not "%VSCMD_ARG_TGT_ARCH%"=="x64" (
+    echo WARNING: You are NOT in a 64-bit tools environment.
+    echo Current Arch: %VSCMD_ARG_TGT_ARCH%
+    echo This will likely cause 'WinError 193' in 64-bit Python.
+    echo Please use: "x64 Native Tools Command Prompt for VS 2022"
+    echo.
+    set /p "choice=Continue anyway? (y/N): "
+    if /I not "!choice!"=="y" exit /b 1
+)
+
+rem ---------------------------------------------------------------------------
 rem 检查 cl.exe 是否可用
 rem ---------------------------------------------------------------------------
 where.exe cl >nul 2>&1
 if errorlevel 1 (
     echo ERROR: cl.exe not found in PATH.
     echo Please run this script from a Visual Studio Developer Command Prompt.
-    echo   - VS2022: "x64 Native Tools Command Prompt for VS 2022"
     exit /b 1
 )
 
@@ -36,9 +45,10 @@ if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 if exist "%TMP_DIR%" rmdir /s /q "%TMP_DIR%"
 mkdir "%TMP_DIR%"
 
-set "FLAGS=/nologo /O2 /EHsc /D_CRT_SECURE_NO_WARNINGS"
+rem 增加 /utf-8 解决 C4819 警告，增加 /LD 确保链接为 DLL
+set "FLAGS=/nologo /O2 /EHsc /D_CRT_SECURE_NO_WARNINGS /utf-8"
 
-echo --- 开始编译 U-Drop Native Core (Windows x64 MSVC) ---
+echo --- 开始编译 U-Drop Native Core (Windows %VSCMD_ARG_TGT_ARCH% MSVC) ---
 
 rem ---------------------------------------------------------------------------
 rem 1. 编译 BLAKE3 模块
@@ -47,22 +57,16 @@ echo [1/3] Compiling BLAKE3...
 
 cl %FLAGS% /c "%BLAKE3_DIR%\blake3.c" /Fo"%TMP_DIR%\blake3.obj"
 if errorlevel 1 goto :fail
-
 cl %FLAGS% /c "%BLAKE3_DIR%\blake3_portable.c" /Fo"%TMP_DIR%\blake3_portable.obj"
 if errorlevel 1 goto :fail
-
 cl %FLAGS% /c "%BLAKE3_DIR%\blake3_dispatch.c" /Fo"%TMP_DIR%\blake3_dispatch.obj"
 if errorlevel 1 goto :fail
-
 cl %FLAGS% /c "%BLAKE3_DIR%\blake3_sse2.c" /Fo"%TMP_DIR%\blake3_sse2.obj"
 if errorlevel 1 goto :fail
-
 cl %FLAGS% /c "%BLAKE3_DIR%\blake3_sse41.c" /Fo"%TMP_DIR%\blake3_sse41.obj"
 if errorlevel 1 goto :fail
-
 cl %FLAGS% /c "%BLAKE3_DIR%\blake3_avx2.c" /Fo"%TMP_DIR%\blake3_avx2.obj"
 if errorlevel 1 goto :fail
-
 cl %FLAGS% /c "%BLAKE3_DIR%\blake3_avx512.c" /Fo"%TMP_DIR%\blake3_avx512.obj"
 if errorlevel 1 goto :fail
 
@@ -73,7 +77,6 @@ echo [2/3] Compiling MD5 + Thumbnail...
 
 cl %FLAGS% /c "%SRC_DIR%MD5.c" /Fo"%TMP_DIR%\MD5.obj"
 if errorlevel 1 goto :fail
-
 cl %FLAGS% /c "%SRC_DIR%thumbnail.cpp" /Fo"%TMP_DIR%\thumbnail.obj"
 if errorlevel 1 goto :fail
 
