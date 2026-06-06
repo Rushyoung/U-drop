@@ -31,7 +31,9 @@ emcc $SOURCE_DIR/MD5.c \
      -s MODULARIZE=1 \
      -s EXPORT_ES6=1 \
      -s ALLOW_MEMORY_GROWTH=1 \
-     -s EXPORTED_RUNTIME_METHODS='["cwrap", "ccall", "getValue", "setValue"]' \
+     -s FORCE_FILESYSTEM=1 \
+     -s EXPORTED_RUNTIME_METHODS='["cwrap", "ccall", "getValue", "setValue", "FS"]' \
+     -s EXPORTED_FUNCTIONS='["_malloc", "_free", "_CalculateFastFileMD5", "_get_blake3_hasher_size", "_BLAKE3_Init_Ex", "_BLAKE3_Update_Ex", "_BLAKE3_Final_Ex"]' \
      -o $OUT_DIR/hash.js
 
 if [ $? -eq 0 ]; then

@@ -115,23 +115,43 @@ static void DigestToHex(const unsigned char *digest, int len, char *result) {
     result[len*2] = '\0';
 }
 
-// --- 后端专用：文件 IO 接口 (WASM 环境禁用) ---
-#ifndef __EMSCRIPTEN__
+// --- 通用哈希计算核心接口 (支持后端 Native 与 前端 WASM) ---
 
 NATIVE_API int CalculateFastFileMD5(const char *filePath, char *md5Result) {
     if (filePath == NULL || md5Result == NULL) return -1;
     FILE *file = fopen(filePath, "rb"); if (file == NULL) return -1;
+    
+    // 获取文件大小
+#if defined(_WIN32)
+    _fseeki64(file, 0, SEEK_END); int64_t fileSize = _ftelli64(file);
+#elif defined(__EMSCRIPTEN__)
+    fseek(file, 0, SEEK_END); long fileSize = ftell(file); // WASM 虚拟文件系统使用 long
+#else
     fseeko(file, 0, SEEK_END); int64_t fileSize = ftello(file);
+#endif
+
     MD5_CTX ctx; MD5_Init(&ctx); unsigned char buffer[4096]; size_t bytesRead;
-    const int64_t blockSize = 4096;
-    if (fileSize <= blockSize * 3) { rewind(file); while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) MD5_Update(&ctx, buffer, bytesRead); }
-    else {
-        fseeko(file, 0, SEEK_SET); bytesRead = fread(buffer, 1, blockSize, file); MD5_Update(&ctx, buffer, bytesRead);
-        fseeko(file, (fileSize - blockSize) / 2, SEEK_SET); bytesRead = fread(buffer, 1, blockSize, file); MD5_Update(&ctx, buffer, bytesRead);
-        fseeko(file, fileSize - blockSize, SEEK_SET); bytesRead = fread(buffer, 1, blockSize, file); MD5_Update(&ctx, buffer, bytesRead);
+    const long blockSize = 4096;
+    
+    if (fileSize <= blockSize * 3) {
+        rewind(file);
+        while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) MD5_Update(&ctx, buffer, bytesRead);
+    } else {
+        // 头
+        fseek(file, 0, SEEK_SET); bytesRead = fread(buffer, 1, blockSize, file); MD5_Update(&ctx, buffer, bytesRead);
+        // 中
+        fseek(file, (fileSize - blockSize) / 2, SEEK_SET); bytesRead = fread(buffer, 1, blockSize, file); MD5_Update(&ctx, buffer, bytesRead);
+        // 尾
+        fseek(file, fileSize - blockSize, SEEK_SET); bytesRead = fread(buffer, 1, blockSize, file); MD5_Update(&ctx, buffer, bytesRead);
     }
-    unsigned char digest[16]; MD5_Final(digest, &ctx); fclose(file); DigestToHex(digest, 16, md5Result); return 0;
+    
+    unsigned char digest[16]; MD5_Final(digest, &ctx); fclose(file); 
+    DigestToHex(digest, 16, md5Result); 
+    return 0;
 }
+
+// --- 仅后端专用：全量文件哈希 (WASM 环境在 Worker 侧通过分片调用流式接口) ---
+#ifndef __EMSCRIPTEN__
 
 NATIVE_API int CalculateFileBLAKE3(const char *filePath, char *hexResult) {
     if (filePath == NULL || hexResult == NULL) return -1;
