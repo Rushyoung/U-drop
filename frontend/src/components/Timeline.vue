@@ -158,6 +158,22 @@ watch(containerY, () => {
   updateReadingProgress();
 });
 
+// 监听新消息到达并根据用户偏好自动滚动
+watch(() => filteredMessages.value.length, (newLen, oldLen) => {
+  if (newLen > oldLen && !isInitialPositioning.value && _settings.autoScrollToBottom) {
+    const container = containerRef.value;
+    if (container) {
+      // 智能判断：只有当用户当前就在底部附近时，才自动跟进新内容
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 300;
+      if (isNearBottom) {
+        nextTick(() => {
+          scrollToBottom('smooth');
+        });
+      }
+    }
+  }
+});
+
 const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
   if (containerRef.value) {
     const container = containerRef.value;
