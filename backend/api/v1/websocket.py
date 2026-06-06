@@ -81,7 +81,11 @@ async def websocket_endpoint(
                 logger.warning(f"WS | 异常载荷拦截: 用户 {user_uuid[:8]} 发送了超长信令 ({len(data)} 字节)")
                 break
 
-            message = json.loads(data)
+            try:
+                message = json.loads(data)
+            except json.JSONDecodeError:
+                logger.warning(f"WS | 收到非 JSON 载荷: {data[:100]}...")
+                continue
             
             if message.get("type") == "PING":
                 await websocket.send_text(json.dumps({"type": "PONG", "timestamp": int(time.time())}))

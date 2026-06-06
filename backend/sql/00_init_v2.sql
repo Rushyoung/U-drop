@@ -12,7 +12,10 @@ CREATE TABLE IF NOT EXISTS users (
     is_active INTEGER DEFAULT 1,          -- 是否启用: 1启用, 0禁用
     created_at INTEGER NOT NULL,          -- 注册时间
     temp_expire_hours INTEGER DEFAULT 24, -- 临时 Session 有效小时数 (<= 24)
-    sliding_window_days INTEGER DEFAULT 30 -- 滑动窗口续期天数
+    sliding_window_days INTEGER DEFAULT 30, -- 滑动窗口续期天数
+    trash_expire_days INTEGER DEFAULT 30, -- 回收站保留天数
+    storage_quota BIGINT DEFAULT 5368709120, -- 存储配额 (默认 5GB)
+    used_storage BIGINT DEFAULT 0         -- 已用空间 (Bytes)
 );
 
 -- 1.1 系统全局设置表
@@ -22,6 +25,7 @@ CREATE TABLE IF NOT EXISTS sys_settings (
 );
 INSERT OR IGNORE INTO sys_settings (key, value) VALUES ('allow_registration', 'true');
 INSERT OR IGNORE INTO sys_settings (key, value) VALUES ('auth_rate_limit', '5');
+INSERT OR IGNORE INTO sys_settings (key, value) VALUES ('default_token_expire', '86400');
 
 -- 2. 设备管理表
 CREATE TABLE IF NOT EXISTS devices (

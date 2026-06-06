@@ -80,7 +80,7 @@ export function useWebSocket() {
     stopHeartbeat();
     heartbeatTimer = setInterval(() => {
       if (socket.value?.readyState === WebSocket.OPEN) {
-        socket.value.send('PING');
+        socket.value.send(JSON.stringify({ type: 'PING' }));
       }
     }, 30000);
   };

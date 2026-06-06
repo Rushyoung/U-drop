@@ -1,56 +1,42 @@
-# U-Drop 接口文档 (同步当前实现)
+# U-Drop API 接口定义 (v0.5.1)
 
-## 通用返回格式
-所有接口都返回这个格式：
-```json
-{
-  "code": 200,      // 200是成功，其他是错
-  "message": "...", // 提示信息
-  "data": { ... }   // 真正的数据
-}
-```
+## Phase 1: 账号与设备
+- `POST /auth/register`: 用户注册
+- `POST /auth/login`: 登录（支持 `single_use`, `expire_in`）
+- `GET  /auth/me`: 获取个人信息（含配额、已用量、Seq）
+- `PUT  /auth/settings`: 更新设置（如 `trash_expire_days`）
+- `PUT  /auth/device`: 更新当前设备名称
+- `PUT  /auth/password`: 修改登录密码
+- `GET  /auth/devices`: 获取已登录设备列表
+- `DELETE /auth/devices/{id}`: 强制注销特定设备
 
-## 1. 消息模块 (/api/v1/messages)
+## Phase 2: 消息与实时信令
+- `POST /messages`: 创建消息（返回 `upload_id` 清单）
+- `GET  /messages`: 拉取时间线（滑动窗口分页）
+- `DELETE /messages/{id}`: 软删除（进回收站）
+- `GET  /messages/trash`: 查看回收站
+- `POST /messages/{id}/restore`: 恢复消息
+- `DELETE /messages/trash/empty`: 清空回收站（释放配额）
+- **`WS /ws`**: WebSocket 实时信令通道
 
-### 创建消息 [POST]
-请求：
-```json
-{
-  "content": "文字内容",
-  "file_name": "文件名.ext", // 没文件就不传
-  "total_size": 12345,
-  "sparse_hash": "指纹",
-  "tags": ["标签1"]
-}
-```
-返回 (带文件时)：
-```json
-{
-  "code": 200,
-  "data": {
-    "status": "accepted",
-    "message_id": 1,
-    "upload_id": "uuid-xxx" // 拿这个去传文件
-  }
-}
-```
+## Phase 3: 极速文件流与配额管理
+- `PATCH /files/upload/{upload_id}`: 流式上传（支持 Proof of Possession 秒传）
+- `POST  /files/upload/{upload_id}/commit`: 提交哈希校验并入库
+- `GET   /files/large`: 大文件猎手（返回引用详情，助力精准释放）
+- `DELETE /files/messages/{mid}/attachments/{aid}`: 剥离附件（精细化释放空间）
+- `GET   /files/attachments/{id}/download`: 下载附件 (逻辑寻址)
+- `GET   /files/attachments/{id}/thumbnail`: 获取缩略图 (逻辑寻址)
 
-## 2. 文件上传模块 (/api/v1/files)
+## Phase 4: 分享中心
+- `POST /share/file`: 创建文件分享（入参为逻辑 `attachment_id`）
+- `GET  /share/{id}`: 匿名提取文件
 
-### 流式上传 [PATCH] `/upload/{upload_id}`
-- **Header**: `X-Full-Hash` (可选，本地算完就带上)
-- **Body**: 原始二进制流
-- **逻辑**: 
-    - 传的时候服务端会盯着 `X-Full-Hash`。
-    - 发现重复了直接回 `200` 并报 `deduplicated`，这时候客户端就该停了。
-
-### 提交上传 [POST] `/upload/{upload_id}/commit`
-- **Header**: `X-Full-Hash` (必填)
-- **逻辑**: 
-    - 服务端核对哈希，对不上直接报 `400`。
-    - 对上了就转存文件，把消息表里的 `file_hash` 补全。
-
-## 3. 时间线模块 (待完善)
-- **获取消息**: `GET /api/v1/messages`
-- **逻辑**: 以后会用 `anchor_id` 来拉，保证翻页不重不漏。
-- **状态提示**: 如果消息的 `file_hash` 是空的，前端记得标个“上传中”。
+## Phase 5: 系统管理与维护 (Manage)
+- `GET  /system/status`: 探测系统初始化状态及配置
+- `POST /system/setup`: 首次运行初始化 (创建 Admin)
+- `GET  /manage/settings`: 管理员查看全局配置
+- `PUT  /manage/settings`: 管理员热更新系统设置
+- `GET  /manage/users`: 查看全量用户列表
+- `PUT  /manage/users/{uuid}/quota`: 调整用户配额
+- `PUT  /manage/users/{uuid}/status`: 启用/禁用用户
+- `POST /manage/factory_reset`: 工厂重置 (抹除业务数据)

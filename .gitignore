@@ -1,11 +1,55 @@
+# Python 运行环境
+__pycache__/
+*.py[cod]
 .venv/
+.env
+.pytest_cache/
+.vscode/
+
+# Node.js
 node_modules/
 dist/
-*.so
-*.dll
+
+# 数据库与日志
 udrop.db
+*.db-shm
+*.db-wal
 logs/
 storage/
-GEMINI.md
-.vscode/
-.pytest_cache/
+
+# 编译产物
+*.o
+*.so
+*.dll
+*.wasm
+lib/*.so
+lib/*.dll
+*.exp
+
+# 文档管理
+*.md
+!后端.md
+!计划功能.md
+!计划api.md
+
+
+# 排除 AI 辅助与过程 JSON
+fix_styles.json
+generate_doc.json
+inject_agile.json
+final_batch*.json
+batch*.json
+current_body.json
+styles.json
+structure.json
+check_bullets.json
+force_remove.json
+clean_batch.json
+clean_remove_all*.json
+remove_all.json
+
+*.doc
+*.docx
+
+run_tests.*
+lib/thumbnail.lib

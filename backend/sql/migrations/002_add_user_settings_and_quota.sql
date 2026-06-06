@@ -1,4 +1,0 @@
--- 扩展用户配置与存储配额系统
-ALTER TABLE users ADD COLUMN trash_expire_days INTEGER DEFAULT 30;
-ALTER TABLE users ADD COLUMN storage_quota BIGINT DEFAULT 5368709120; -- 默认 5GB
-ALTER TABLE users ADD COLUMN used_storage BIGINT DEFAULT 0;

@@ -1,9 +1,9 @@
 @echo off
-rem U-Drop WASM 编译脚本 (Windows 版 - 全能哈希 MD5 + BLAKE3)
+rem U-Drop WASM 编译脚本 (Windows 版 - 仅 MD5)
 rem 需在已激活 emsdk 的环境中运行 (emsdk_env.bat)
 rem 用法:
-rem   emcc.bat          (编译 lib/wasm/hash.js + hash.wasm)
-rem   emcc.bat clean    (清理构建产物)
+rem   emcc_md5.bat          (编译 lib/wasm/md5.js + md5.wasm)
+rem   emcc_md5.bat clean    (清理构建产物)
 
 chcp 65001 >nul
 
@@ -26,17 +26,13 @@ rem ---------------------------------------------------------------------------
 rem 路径配置
 rem ---------------------------------------------------------------------------
 set "SRC_DIR=%~dp0."
-set "BLAKE3_DIR=%~dp0blake3"
 set "OUT_DIR=%~dp0..\lib\wasm"
 
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
 
-echo --- 开始编译全能哈希 WASM (MD5 + BLAKE3) ---
+echo --- 开始编译 MD5 WASM ---
 
 emcc "%SRC_DIR%\MD5.c" ^
-     "%BLAKE3_DIR%\blake3.c" ^
-     "%BLAKE3_DIR%\blake3_portable.c" ^
-     "%BLAKE3_DIR%\blake3_dispatch.c" ^
      "-I%SRC_DIR%" ^
      -O3 ^
      -s WASM=1 ^
@@ -44,13 +40,13 @@ emcc "%SRC_DIR%\MD5.c" ^
      -s EXPORT_ES6=1 ^
      -s ALLOW_MEMORY_GROWTH=1 ^
      -s EXPORTED_RUNTIME_METHODS="[\"cwrap\",\"ccall\",\"getValue\",\"setValue\"]" ^
-     -o "%OUT_DIR%\hash.js"
+     -o "%OUT_DIR%\md5.js"
 
 if errorlevel 1 goto :fail
 
 echo.
-echo [OK] WASM 编译成功: %OUT_DIR%\hash.js
-dir /b "%OUT_DIR%\hash.*"
+echo [OK] MD5 WASM 编译成功: %OUT_DIR%\md5.js
+dir /b "%OUT_DIR%\md5.*"
 exit /b 0
 
 :fail
@@ -59,14 +55,14 @@ echo [FAIL] WASM 编译失败。
 exit /b 1
 
 :clean
-echo Cleaning WASM build artifacts...
-if exist "%~dp0..\lib\wasm\hash.js" del /f /q "%~dp0..\lib\wasm\hash.js"
-if exist "%~dp0..\lib\wasm\hash.wasm" del /f /q "%~dp0..\lib\wasm\hash.wasm"
+echo Cleaning MD5 WASM build artifacts...
+if exist "%~dp0..\lib\wasm\md5.js" del /f /q "%~dp0..\lib\wasm\md5.js"
+if exist "%~dp0..\lib\wasm\md5.wasm" del /f /q "%~dp0..\lib\wasm\md5.wasm"
 echo Clean complete.
 exit /b 0
 
 :usage
 echo Usage:
-echo   emcc.bat          - Build hash.js + hash.wasm (MD5 + BLAKE3)
-echo   emcc.bat clean    - Remove build artifacts
+echo   emcc_md5.bat          - Build md5.js + md5.wasm (MD5 only)
+echo   emcc_md5.bat clean    - Remove build artifacts
 exit /b 0

@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from pathlib import Path
 from db.connection import open_connection
@@ -98,8 +99,14 @@ def initialize_database(conn=None) -> None:
             conn.close()
             # 安全加固：设置数据库文件权限 (仅所有者读写)
             try:
-                os.chmod(settings.DB_NAME, 0o600)
-                logger.info(f"初始化 | 数据库权限已加固: {settings.DB_NAME}")
+                if sys.platform == "win32":
+                    logger.info(f"初始化 | Windows 环境跳过权限设置")
+                else:
+                    for suffix in ("", "-wal", "-shm"):
+                        db_file = str(settings.DB_NAME) + suffix
+                        if os.path.exists(db_file):
+                            os.chmod(db_file, 0o600)
+                    logger.info(f"初始化 | 数据库权限已加固: {settings.DB_NAME}")
             except Exception as e:
                 logger.warning(f"初始化 | 无法设置数据库文件权限: {e}")
         logger.debug("--- 数据库迁移引擎工作结束 ---")
