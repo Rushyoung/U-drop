@@ -11,25 +11,32 @@
 #include <stdint.h>
 #include "blake3/blake3.h"
 
-// 宏隔离：仅在非 WASM 环境下启用文件操作相关头文件
+// 宏隔离与跨平台大文件支持
 #ifndef __EMSCRIPTEN__
     #ifdef _WIN32
         #include <windows.h>
-        #define fseeko _fseeki64
-        #define ftello _ftelli64
+        #define FSEEK _fseeki64
+        #define FTELL _ftelli64
+        #define OFF_T int64_t
     #else
         #define _FILE_OFFSET_BITS 64
         #include <unistd.h>
+        #define FSEEK fseeko
+        #define FTELL ftello
+        #define OFF_T int64_t
     #endif
 #else
     #include <emscripten/emscripten.h>
+    #define FSEEK fseek
+    #define FTELL ftell
+    #define OFF_T long
 #endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// 统一导出宏
+// 统一导出宏：确保在 Windows 下不发生名称粉碎 (Name Mangling)
 #if defined(__EMSCRIPTEN__)
     #define NATIVE_API EMSCRIPTEN_KEEPALIVE
 #elif defined(_WIN32)
@@ -115,42 +122,45 @@ static void DigestToHex(const unsigned char *digest, int len, char *result) {
     result[len*2] = '\0';
 }
 
-// --- 通用哈希计算核心接口 (支持后端 Native 与 前端 WASM) ---
+// --- 通用哈希计算核心接口 (支持后端与前端 WASM) ---
 
 NATIVE_API int CalculateFastFileMD5(const char *filePath, char *md5Result) {
     if (filePath == NULL || md5Result == NULL) return -1;
     FILE *file = fopen(filePath, "rb"); if (file == NULL) return -1;
     
-    // 获取文件大小
-#if defined(_WIN32)
-    _fseeki64(file, 0, SEEK_END); int64_t fileSize = _ftelli64(file);
-#elif defined(__EMSCRIPTEN__)
-    fseek(file, 0, SEEK_END); long fileSize = ftell(file); // WASM 虚拟文件系统使用 long
-#else
-    fseeko(file, 0, SEEK_END); int64_t fileSize = ftello(file);
-#endif
+    FSEEK(file, 0, SEEK_END);
+    OFF_T fileSize = FTELL(file);
+    const OFF_T blockSize = 4096;
 
-    MD5_CTX ctx; MD5_Init(&ctx); unsigned char buffer[4096]; size_t bytesRead;
-    const long blockSize = 4096;
+    MD5_CTX ctx; MD5_Init(&ctx); 
+    unsigned char buffer[4096]; 
+    size_t bytesRead;
     
     if (fileSize <= blockSize * 3) {
         rewind(file);
         while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) MD5_Update(&ctx, buffer, bytesRead);
     } else {
         // 头
-        fseek(file, 0, SEEK_SET); bytesRead = fread(buffer, 1, blockSize, file); MD5_Update(&ctx, buffer, bytesRead);
+        FSEEK(file, 0, SEEK_SET); 
+        bytesRead = fread(buffer, 1, (size_t)blockSize, file); 
+        MD5_Update(&ctx, buffer, bytesRead);
         // 中
-        fseek(file, (fileSize - blockSize) / 2, SEEK_SET); bytesRead = fread(buffer, 1, blockSize, file); MD5_Update(&ctx, buffer, bytesRead);
+        FSEEK(file, (fileSize - blockSize) / 2, SEEK_SET); 
+        bytesRead = fread(buffer, 1, (size_t)blockSize, file); 
+        MD5_Update(&ctx, buffer, bytesRead);
         // 尾
-        fseek(file, fileSize - blockSize, SEEK_SET); bytesRead = fread(buffer, 1, blockSize, file); MD5_Update(&ctx, buffer, bytesRead);
+        FSEEK(file, fileSize - blockSize, SEEK_SET); 
+        bytesRead = fread(buffer, 1, (size_t)blockSize, file); 
+        MD5_Update(&ctx, buffer, bytesRead);
     }
     
-    unsigned char digest[16]; MD5_Final(digest, &ctx); fclose(file); 
+    unsigned char digest[16]; MD5_Final(digest, &ctx); 
+    fclose(file); 
     DigestToHex(digest, 16, md5Result); 
     return 0;
 }
 
-// --- 仅后端专用：全量文件哈希 (WASM 环境在 Worker 侧通过分片调用流式接口) ---
+// --- 仅后端专用：全量大文件哈希 (WASM 环境通常在 JS 侧分片调用) ---
 #ifndef __EMSCRIPTEN__
 
 NATIVE_API int CalculateFileBLAKE3(const char *filePath, char *hexResult) {
