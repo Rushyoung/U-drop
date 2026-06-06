@@ -108,7 +108,9 @@ const handleRevoke = async (device: DeviceResponse) => {
 const formatTime = (ts: number) => {
   const now = Math.floor(Date.now() / 1000);
   const diff = now - ts;
-  if (diff < 60) return '刚刚';
+  
+  // WebSocket 心跳标准：由于 PING 间隔通常为 60s，设定 90s 内为在线
+  if (diff < 90) return '在线';
   if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
   if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
   return new Date(ts * 1000).toLocaleDateString();
@@ -214,7 +216,12 @@ onMounted(loadDevices);
                        <span class="text-[9px] font-black text-secondary/60 uppercase tracking-widest flex items-center">
                           <History class="w-3 h-3 mr-1.5" /> 最后在线
                        </span>
-                       <span class="text-xs font-bold text-on-surface">{{ formatTime(device.last_seen) }}</span>
+                       <div class="flex items-center space-x-2">
+                          <div v-if="Math.floor(Date.now() / 1000) - device.last_seen < 90" class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                          <span :class="['text-xs font-bold', Math.floor(Date.now() / 1000) - device.last_seen < 90 ? 'text-green-600' : 'text-on-surface']">
+                            {{ formatTime(device.last_seen) }}
+                          </span>
+                       </div>
                     </div>
                  </div>
                  

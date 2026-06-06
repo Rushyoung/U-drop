@@ -50,12 +50,16 @@ async def websocket_endpoint(
         # 1. 鉴权
         session_info = auth_service.is_active_user(token, expire_enable=True)
         user_uuid = session_info["user_uuid"]
+        device_id = session_info.get("device_id")
         
         # 2. 建立连接 (Manager 内部限制最大连接数)
         success = await ws_manager.connect(websocket, user_uuid)
         if not success: return
 
-        logger.success(f"WS | 鉴权通过: 用户 {user_uuid[:8]} 建立实时信令通道")
+        if device_id:
+            auth_service.touch_device(device_id)
+
+        logger.success(f"WS | 鉴权通过: 用户 {user_uuid[:8]} (设备: {device_id[:8] if device_id else 'N/A'}) 建立实时信令通道")
         
         # 3. 发送握手初始化信息
         await websocket.send_text(json.dumps({
@@ -87,6 +91,10 @@ async def websocket_endpoint(
                 logger.warning(f"WS | 收到非 JSON 载荷: {data[:100]}...")
                 continue
             
+            # 任何合法的信令交互都视为“活跃”
+            if device_id:
+                auth_service.touch_device(device_id)
+
             if message.get("type") == "PING":
                 await websocket.send_text(json.dumps({"type": "PONG", "timestamp": int(time.time())}))
                 logger.debug(f"WS | 心跳维持: 用户 {user_uuid[:8]}")

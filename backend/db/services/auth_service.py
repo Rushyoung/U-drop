@@ -230,30 +230,43 @@ class AuthService:
         logger.info(f"更新设备 {device_id[:8]} 名称为: {device_name}")
         return self.devices.update_device_name(device_id, device_name)
 
+    def touch_device(self, device_id: str):
+        """更新设备最后活跃时间 (心跳触发)"""
+        return self.devices.touch_last_seen(device_id, get_time())
+
     def list_user_devices(self, user_uuid: str) -> list[dict]:
-        """获取用户名下所有设备列表"""
-        rows = self.devices.list_by_user_uuid(user_uuid)
-        return [dict(r) for r in rows]
+        """获取用户名下所有活跃设备列表 (仅包含当前有有效会话的设备)"""
+        # 使用联表查询确保只返回在线的设备，防止已下线的设备在列表中占位
+        # 同时保留数据库中的 device 记录，以维持历史消息的元数据完整性
+        query = """
+            SELECT DISTINCT d.* FROM devices d
+            JOIN sessions s ON d.device_id = s.device_id
+            WHERE d.user_uuid = ?
+        """
+        cursor = self.sessions.conn.execute(query, (user_uuid,))
+        return [dict(r) for r in cursor.fetchall()]
 
     def revoke_device(self, user_uuid: str, device_id: str) -> bool:
-        """强制注销并踢出特定设备"""
+        """强制注销并下线特定设备 (仅使会话失效，保留设备记录及历史消息)"""
         device = self.devices.get_by_device_id(device_id)
         if not device or device["user_uuid"] != user_uuid:
-            logger.warning(f"设备撤销失败 | 设备 {device_id[:8]} 不属于用户 {user_uuid[:8]}")
+            logger.warning(f"设备下线失败 | 设备 {device_id[:8]} 不属于用户 {user_uuid[:8]}")
             return False
             
         # 1. 内存清洗：踢出该设备关联的所有在线 Token
         with _SESSION_LOCK:
             cache_keys = list(_SESSION_CACHE.keys())
+            kicked_count = 0
             for tk in cache_keys:
                 if _SESSION_CACHE[tk].get("device_id") == device_id:
                     _SESSION_CACHE.pop(tk, None)
+                    kicked_count += 1
                     
-        # 2. 数据库级清理：删除 Session 和设备记录
+        # 2. 数据库级清理：仅删除 Session，使其 Token 失效
+        # 故意保留 devices 表中的记录，以防止级联删除关联的 messages
         self.sessions.delete_by_device_id(device_id)
-        self.devices.delete_device(device_id)
         
-        logger.warning(f"设备已撤销 | 用户 {user_uuid[:8]} 强制注销了设备 {device_id[:8]} ({device.get('device_name')})")
+        logger.warning(f"设备已下线 | 用户 {user_uuid[:8]} 使得设备 {device_id[:8]} ({device.get('device_name')}) 的会话失效。清理了 {kicked_count} 个 Token。")
         return True
 
     def admin_update_quota(self, admin_uuid: str, target_uuid: str, storage_quota: int):
@@ -281,7 +294,7 @@ class AuthService:
         return self.users.update_status(target_uuid, is_active)
 
     def admin_hard_delete_user(self, admin_uuid: str, target_uuid: str):
-        """管理员：安全销毁用户及其所有关联物理资源引用"""
+        """管理员：物理销毁用户。核心任务是核减物理文件引用计数，行删除依靠 DB 级联。"""
         if admin_uuid == target_uuid:
             raise LoginError("Admin cannot delete themselves.")
         
@@ -290,8 +303,8 @@ class AuthService:
         
         logger.warning(f"审计 | 管理员 {admin_uuid[:8]} 正在物理销毁用户: {user.account} ({target_uuid[:8]})")
         
-        # 1. 引用计数核减：查出该用户所有消息关联的附件哈希
-        # 获取用户所有附件哈希
+        # 1. 物理引用计数精准核减 (关键：数据库级联删除无法自动减计数)
+        # 获取该用户名下所有消息关联的所有附件哈希 (不使用 DISTINCT，因为多次引用需多次核减)
         cursor = self.users.conn.execute("""
             SELECT a.file_hash FROM attachments a
             JOIN messages m ON a.message_id = m.id
@@ -300,7 +313,6 @@ class AuthService:
         hashes = [r[0] for r in cursor.fetchall()]
         
         if hashes:
-            # 批量扣减引用计数
             for h in hashes:
                 self.users.conn.execute(
                     "UPDATE file_info SET refer_count = refer_count - 1 WHERE full_hash = ?",
@@ -308,7 +320,7 @@ class AuthService:
                 )
             logger.info(f"审计 | 已核减用户 {len(hashes)} 个物理文件引用计数")
 
-        # 2. 缓存清洗：踢出所有该用户的 Session
+        # 2. 内存清洗：踢出该用户的所有在线会话
         with _SESSION_LOCK:
             cache_keys = list(_SESSION_CACHE.keys())
             kicked_count = 0
@@ -317,7 +329,7 @@ class AuthService:
                     _SESSION_CACHE.pop(tk, None)
                     kicked_count += 1
         
-        # 3. 彻底删除用户记录 (依靠数据库级联删除 messages, attachments, sessions, devices)
+        # 3. 彻底删除用户记录 (依靠数据库 00_init_v2.sql 中的 ON DELETE CASCADE)
         self.users.delete_user(target_uuid)
         logger.success(f"审计 | 用户销毁完成。清理了 {kicked_count} 个活跃 Session。")
 
