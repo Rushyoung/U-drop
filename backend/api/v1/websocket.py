@@ -39,27 +39,43 @@ async def websocket_doc_placeholder():
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
-    token: str = Query(..., description="Bearer Token (用于接入鉴权)"),
-    auth_service: AuthService = Depends(get_auth_service)
+    token: str = Query(..., description="Bearer Token (用于接入鉴权)")
 ):
     """
     WebSocket 信令真实入口。
+    优化：不再通过 Depends 注入 auth_service，避免在整个长连接期间占用数据库句柄。
     """
+    from db.connection import open_connection
+    from db.repositories.users import UserRepository
+    from db.repositories.devices import DeviceRepository
+    from db.repositories.sessions import SessionRepository
+
     user_uuid = None
+    device_id = None
+    
     try:
-        # 1. 鉴权
-        session_info = auth_service.is_active_user(token, expire_enable=True)
-        user_uuid = session_info["user_uuid"]
-        device_id = session_info.get("device_id")
-        
-        # 2. 建立连接 (Manager 内部限制最大连接数)
+        # 1. 鉴权：使用即用即走的连接
+        with open_connection() as conn:
+            auth_service = AuthService(UserRepository(conn), DeviceRepository(conn), SessionRepository(conn))
+            try:
+                session_info = auth_service.is_active_user(token, expire_enable=True)
+                user_uuid = session_info["user_uuid"]
+                device_id = session_info.get("device_id")
+            except TokenExpired:
+                logger.warning("WS | 鉴权失败: Token 已过期或非法")
+                await websocket.close(code=1008)
+                return
+
+        # 2. 建立连接 (Manager 内存管理)
         success = await ws_manager.connect(websocket, user_uuid)
         if not success: return
 
+        # 初次建立连接更新活跃时间
         if device_id:
-            auth_service.touch_device(device_id)
+            with open_connection() as conn:
+                AuthService(UserRepository(conn), DeviceRepository(conn), SessionRepository(conn)).touch_device(device_id)
 
-        logger.success(f"WS | 鉴权通过: 用户 {user_uuid[:8]} (设备: {device_id[:8] if device_id else 'N/A'}) 建立实时信令通道")
+        logger.success(f"WS | 成功握手: 用户 {user_uuid[:8]} (设备: {device_id[:8] if device_id else 'N/A'})")
         
         # 3. 发送握手初始化信息
         await websocket.send_text(json.dumps({
@@ -72,36 +88,29 @@ async def websocket_endpoint(
 
         # 4. 维持接收循环
         while True:
-            # 安全加固：增加超时控制和文本长度限制
-            # 预期客户端至少每 60s 发送一次 PING
             try:
                 data = await asyncio.wait_for(websocket.receive_text(), timeout=65.0)
             except asyncio.TimeoutError:
                 logger.warning(f"WS | 链路超时断开: 用户 {user_uuid[:8]}")
                 break
 
-            # 载荷大小拦截：信令通道不应传输大文本 (限制 4KB)
-            if len(data) > 4096:
-                logger.warning(f"WS | 异常载荷拦截: 用户 {user_uuid[:8]} 发送了超长信令 ({len(data)} 字节)")
-                break
+            if len(data) > 4096: break
 
             try:
                 message = json.loads(data)
-            except json.JSONDecodeError:
-                logger.warning(f"WS | 收到非 JSON 载荷: {data[:100]}...")
-                continue
+            except json.JSONDecodeError: continue
             
-            # 任何合法的信令交互都视为“活跃”
+            # 心跳或业务信令交互时，异步非阻塞地更新活跃时间
             if device_id:
-                auth_service.touch_device(device_id)
+                # 这种频率较低的操作，每次交互开启一个新的极短连接是安全的，
+                # 相比长连接一直占用，它能让 SQLite 的 WAL 模式更好地进行 Checkpoint。
+                with open_connection() as conn:
+                    AuthService(UserRepository(conn), DeviceRepository(conn), SessionRepository(conn)).touch_device(device_id)
 
             if message.get("type") == "PING":
                 await websocket.send_text(json.dumps({"type": "PONG", "timestamp": int(time.time())}))
                 logger.debug(f"WS | 心跳维持: 用户 {user_uuid[:8]}")
 
-    except TokenExpired:
-        logger.warning("WS | 鉴权失败: Token 已过期或非法")
-        await websocket.close(code=1008)
     except WebSocketDisconnect:
         if user_uuid:
             logger.info(f"WS | 客户端主动断开: 用户 {user_uuid[:8]}")
