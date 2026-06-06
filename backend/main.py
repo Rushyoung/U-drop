@@ -312,4 +312,4 @@ async def serve_vue_app(catchall: str):
 
 if __name__ == '__main__':
     # 生产环境建议通过外部传参控制 reload
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host=settings.API_HOST, port=settings.API_PORT, reload=True)

@@ -19,11 +19,6 @@ storage/
 
 # 编译产物
 *.o
-*.so
-*.dll
-*.wasm
-lib/*.so
-lib/*.dll
 *.exp
 
 # 文档管理

@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # 系统动态配置默认值
     ALLOW_REGISTRATION: bool = True
     
+    # 启动配置
+    API_HOST: str = "0.0.0.0"
+    API_PORT: int = 8000
+    
     # 日志等级: DEBUG, INFO, WARNING, ERROR, SUCCESS
     LOG_LEVEL: str = "INFO"
     
