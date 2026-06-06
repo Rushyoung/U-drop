@@ -17,7 +17,6 @@ fastapi-cloud-cli==0.14.0
 fastar==0.8.0
 h11==0.16.0
 httpcore==1.0.9
-httptools==0.7.1
 httpx==0.28.1
 idna==3.11
 jinja2==3.1.6
@@ -49,4 +48,6 @@ urllib3==2.6.3
 uvicorn==0.41.0
 watchfiles==1.1.1
 websockets==16.0
-win32-setctime==1.2.0
+uvloop>=0.19.0; sys_platform != 'win32'
+httptools==0.7.1; sys_platform != 'win32'
+win32-setctime==1.2.0; sys_platform == 'win32'
