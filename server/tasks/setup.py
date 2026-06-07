@@ -42,7 +42,7 @@ async def _run_periodic_task(name: str, func: Callable, base_interval: int):
         while True:
             await asyncio.sleep(interval)
             interval = base_interval + random.randint(-5, 5)
-            await asyncio.to_thread(func)
+            await asyncio.to_thread(func) if not asyncio.iscoroutinefunction(func) else await func()
     except asyncio.CancelledError:
         logger.info(f"Task '{name}' stopped.")
     except Exception as e:

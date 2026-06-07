@@ -8,7 +8,6 @@ from core.exceptions import UdropException
 from core.logger import logger, setup_logger
 from core.rate_limiter import RateLimitMiddleware
 from core.system_guard import SystemGuard
-from db.bootstrap import initialize_database
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from schemas.base import ResponseSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from server.database.setup import setup as database_setup
 from server.tasks.setup import setup as task_setup
 
 
@@ -34,16 +34,13 @@ def ensure_directories():
 
 
 def bootstrap_system():
-    from db.repositories.system import SystemRepository
-    from db.repositories.users import UserRepository
-    from db.services.system_service import SystemService
+    from server.database.services.system import SystemService
 
-    user_repo = UserRepository()
-    if not user_repo.has_admin():
+    system_service = SystemService()
+    if not system_service.has_admin():
         account = settings.ADMIN_ACCOUNT
         password = settings.ADMIN_PASSWORD
         if account and password:
-            system_service = SystemService(SystemRepository(), user_repo)
             system_service.initialize_system(
                 account, password, settings.ALLOW_REGISTRATION, auth_rate_limit=5
             )
@@ -58,14 +55,12 @@ def bootstrap_system():
 async def lifespan(app: FastAPI):
     setup_logger()
     ensure_directories()
-    initialize_database()
+    database_setup()
 
-    from db.repositories.system import SystemRepository
-    from db.repositories.users import UserRepository
+    from server.database.services.system import SystemService
 
-    sys_repo = SystemRepository()
-    user_repo = UserRepository()
-    SystemGuard.sync(sys_repo.get_all_settings(), user_repo.has_admin())
+    system_service = SystemService()
+    SystemGuard.sync(system_service.get_all_settings_dict(), system_service.has_admin())
 
     bootstrap_system()
 
