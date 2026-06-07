@@ -1,8 +1,8 @@
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
-const DEVICE_ID_KEY = 'udrop_device_id';
-const CUSTOM_DEVICE_NAME_KEY = 'udrop_custom_device_name';
-const LAST_ANCHOR_KEY = 'udrop_last_anchor_id';
+const DEVICE_ID_KEY = "udrop_device_id";
+const CUSTOM_DEVICE_NAME_KEY = "udrop_custom_device_name";
+const LAST_ANCHOR_KEY = "udrop_last_anchor_id";
 
 export function getDeviceId() {
   let id = localStorage.getItem(DEVICE_ID_KEY);
@@ -20,7 +20,7 @@ export function saveCustomDeviceName(name) {
 export function getDeviceName() {
   const shortId = getDeviceId().slice(0, 6);
   const customName = localStorage.getItem(CUSTOM_DEVICE_NAME_KEY);
-  
+
   if (customName) {
     return `${customName} [${shortId}]`;
   }

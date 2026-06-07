@@ -16,7 +16,7 @@ export function cacheAsset(hash, blob) {
   if (existing) {
     URL.revokeObjectURL(existing.url);
   }
-  
+
   const url = URL.createObjectURL(blob);
   assetCache.set(hash, { url, blob });
   return url;
@@ -30,5 +30,5 @@ export function clearAssetCache() {
     URL.revokeObjectURL(asset.url);
   });
   assetCache.clear();
-  console.log('[Asset Manager] All cached assets cleared.');
+  console.log("[Asset Manager] All cached assets cleared.");
 }

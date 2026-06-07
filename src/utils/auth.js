@@ -1,6 +1,6 @@
-import { clearAssetCache } from './assetManager';
+import { clearAssetCache } from "./assetManager";
 
-const TOKEN_KEY = 'udrop_token';
+const TOKEN_KEY = "udrop_token";
 
 export function getToken() {
   return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);

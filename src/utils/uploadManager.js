@@ -1,4 +1,4 @@
-import { reactive } from 'vue';
+import { reactive } from "vue";
 
 // Key 是 message_id (临时或正式)
 const tasks = reactive({});
@@ -29,6 +29,6 @@ export function useUploadManager() {
     setTask,
     updateProgress,
     completeTask,
-    setError
+    setError,
   };
 }

@@ -1,5 +1,5 @@
 <script setup>
-import Init from './views/Init.vue';
+import Init from "./views/Init.vue";
 </script>
 
 <template>
@@ -9,7 +9,7 @@ import Init from './views/Init.vue';
 <style>
 :root {
   --surround-color: #aed9f4;
-  --accent-color: #00A3FF;
+  --accent-color: #00a3ff;
   --card-start: #7fb2d5;
   --card-end: #a4d8f0;
 }

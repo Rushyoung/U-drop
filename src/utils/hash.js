@@ -9,12 +9,15 @@ const taskMap = new Map();
 
 function getWorker() {
   if (!persistentWorker) {
-    persistentWorker = new Worker(new URL('../workers/hash.worker.js', import.meta.url), { type: 'module' });
-    
+    persistentWorker = new Worker(
+      new URL("../workers/hash.worker.js", import.meta.url),
+      { type: "module" },
+    );
+
     persistentWorker.onmessage = (e) => {
       const { id, hash, internalTime, error } = e.data;
       const task = taskMap.get(id);
-      
+
       if (task) {
         clearTimeout(task.timer);
         if (error) {
@@ -66,31 +69,31 @@ async function requestHash(type, chunk, timeoutMs = 30000) {
 }
 
 export async function calculateSparseMd5(file) {
-  return requestHash('sparse-md5', file, 30000);
+  return requestHash("sparse-md5", file, 30000);
 }
 
 export async function calculateFullBlake3(file) {
   // 动态超时：基础 60s + 每 GB 增加 60s (针对 4GB 以上文件)
   const timeout = 60000 + Math.ceil(file.size / (1024 * 1024 * 1024)) * 60000;
-  return requestHash('full-blake3', file, timeout);
+  return requestHash("full-blake3", file, timeout);
 }
 
 export function getMimeType(fileName) {
-  const ext = fileName.split('.').pop()?.toLowerCase();
+  const ext = fileName.split(".").pop()?.toLowerCase();
   const map = {
-    'png': 'image/png',
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'bmp': 'image/bmp',
-    'gif': 'image/gif',
-    'webp': 'image/webp',
-    'svg': 'image/svg+xml',
-    'txt': 'text/plain',
-    'pdf': 'application/pdf',
-    'zip': 'application/zip',
-    '7z': 'application/x-7z-compressed',
-    'mp4': 'video/mp4',
-    'mp3': 'audio/mpeg'
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    bmp: "image/bmp",
+    gif: "image/gif",
+    webp: "image/webp",
+    svg: "image/svg+xml",
+    txt: "text/plain",
+    pdf: "application/pdf",
+    zip: "application/zip",
+    "7z": "application/x-7z-compressed",
+    mp4: "video/mp4",
+    mp3: "audio/mpeg",
   };
-  return map[ext || ''] || 'application/octet-stream';
+  return map[ext || ""] || "application/octet-stream";
 }

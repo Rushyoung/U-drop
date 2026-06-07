@@ -1,5 +1,5 @@
-import { ref } from 'vue';
-import { AuthService } from '../api/services';
+import { ref } from "vue";
+import { AuthService } from "../api/services";
 
 const user = ref(null);
 
@@ -11,12 +11,12 @@ export function useUser() {
         user.value = res.data.data;
       }
     } catch (err) {
-      console.error('Failed to fetch user profile');
+      console.error("Failed to fetch user profile");
     }
   };
 
-  return { 
+  return {
     user,
-    fetchUser
+    fetchUser,
   };
 }
