@@ -1,0 +1,14 @@
+[project]
+name = "u-drop-foundation"
+version = "0.1.0"
+description = "The backend for U-drop, a file sharing application."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiofiles>=25.1.0",
+    "fastapi>=0.136.3",
+    "loguru>=0.7.3",
+    "passlib>=1.7.4",
+    "pydantic-settings>=2.14.1",
+    "uvicorn>=0.49.0",
+]

@@ -5,6 +5,10 @@ __pycache__/
 .env
 .pytest_cache/
 .vscode/
+.python-version
+
+# uv 环境
+uv.lock
 
 # Node.js
 node_modules/

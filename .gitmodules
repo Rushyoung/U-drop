@@ -1,0 +1,4 @@
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/Rushyoung/U-drop.git
+	branch = vista
