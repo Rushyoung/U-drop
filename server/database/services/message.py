@@ -8,8 +8,11 @@ from server.core.logger import logger
 from server.core.uploads_manager import uploads_manager
 from server.database.models import (
     Attachment,
+    Device,
     FileInfo,
+    Hashtag,
     Message,
+    MessageTag,
     User,
 )
 from server.database.services.utils import get_time
@@ -64,7 +67,8 @@ class MessageService:
 
     def list_trash(self, user_uuid: str) -> List[MessageResponse]:
         rows = (
-            Message.select()
+            Message.select(Message, Device.device_name, Device.device_type)
+            .join(Device, on=(Message.device_id == Device.device_id))
             .where(
                 (Message.sender_uuid == user_uuid) & (Message.deleted_at.is_null(False))
             )
@@ -74,24 +78,59 @@ class MessageService:
         return self._aggregate_attachments(rows)
 
     def _list_messages(self, user_uuid: str, deleted: bool = False, **kwargs):
-        query = (
-            Message.select()
-            .where(
-                (Message.sender_uuid == user_uuid)
-                & (
-                    Message.deleted_at.is_null()
-                    if not deleted
-                    else Message.deleted_at.is_null(False)
+        base = (Message.sender_uuid == user_uuid) & (
+            Message.deleted_at.is_null()
+            if not deleted
+            else Message.deleted_at.is_null(False)
+        )
+
+        keyword = kwargs.get("keyword")
+        hashtag = kwargs.get("hashtag")
+        limit = kwargs.get("limit", 50)
+        anchor_id = kwargs.get("anchor_id")
+        mode = kwargs.get("mode", "initial")
+
+        if keyword:
+            safe_keyword = (
+                keyword.replace("/", "//").replace("%", "/%").replace("_", "/_")
+            )
+            base = base & Message.content.contains(safe_keyword)
+        if hashtag:
+            base = base & (
+                Message.id.in_(
+                    MessageTag.select(MessageTag.message_id)
+                    .join(Hashtag, on=(MessageTag.tag_id == Hashtag.id))
+                    .where(Hashtag.tag_name == hashtag)
                 )
             )
-            .order_by(Message.timestamp.desc())
-        )
-        limit = kwargs.get("limit")
-        offset = kwargs.get("offset")
-        if limit:
-            query = query.limit(limit)
-        if offset:
-            query = query.offset(offset)
+
+        if mode == "initial" and anchor_id is not None:
+            forward_limit = (limit // 2) + 1
+            anchor_max = (
+                Message.select(fn.MAX(Message.id))
+                .where(base & (Message.id >= anchor_id))
+                .limit(forward_limit)
+            )
+            query = (
+                Message.select(Message, Device.device_name, Device.device_type)
+                .join(Device, on=(Message.device_id == Device.device_id))
+                .where(base & (Message.id <= anchor_max))
+                .order_by(Message.id.desc())
+                .limit(limit)
+            )
+        else:
+            query = (
+                Message.select(Message, Device.device_name, Device.device_type)
+                .join(Device, on=(Message.device_id == Device.device_id))
+                .where(base)
+            )
+            if anchor_id is not None:
+                if mode == "before":
+                    query = query.where(Message.id < anchor_id)
+                elif mode == "after":
+                    query = query.where(Message.id > anchor_id)
+            query = query.order_by(Message.id.desc()).limit(limit)
+
         return query.execute()
 
     def _aggregate_attachments(self, rows) -> List[MessageResponse]:

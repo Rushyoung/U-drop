@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 
 from server.core.exceptions import ForbiddenError, UdropException
 from server.core.logger import logger
-from server.database.models import Attachment, Message, Share
+from server.database.models import Attachment, FileInfo, Message, Share
 from server.database.services.file import FileService
 from server.database.services.utils import AuthManager, get_time
 
@@ -69,7 +69,15 @@ class ShareService:
 
     def list_user_shares(self, user_uuid: str):
         return list(
-            Share.select()
+            Share.select(Share, FileInfo.file_size)
+            .join(
+                FileInfo,
+                on=(
+                    (Share.target_type == "file")
+                    & (Share.target_payload == FileInfo.full_hash)
+                ),
+                join_type="LEFT",
+            )
             .where(Share.creator_uuid == user_uuid)
             .order_by(Share.created_at.desc())
         )
@@ -102,15 +110,17 @@ class ShareService:
                 logger.warning(f"提取码校验失败: ID {share_id}")
                 raise ShareError("提取码错误", 403)
 
-        if share.max_uses > 0 and share.use_count >= share.max_uses:
-            logger.warning(f"分享链接无效或已达上限: ID {share_id}")
-            raise ShareError("分享链接已失效或达到最大使用次数")
-
-        (
+        affected = (
             Share.update(use_count=Share.use_count + 1)
-            .where(Share.share_id == share_id)
+            .where(
+                (Share.share_id == share_id)
+                & ((Share.max_uses == 0) | (Share.use_count < Share.max_uses))
+            )
             .execute()
         )
+        if affected == 0:
+            logger.warning(f"分享链接无效或已达上限: ID {share_id}")
+            raise ShareError("分享链接已失效或达到最大使用次数")
         logger.info(f"分享链接成功消费: ID {share_id} | 文件名={share.display_name}")
 
         file_hash = share.target_payload

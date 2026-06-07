@@ -54,7 +54,15 @@ class FileService:
                 storage_path=f"local://{sub_dir}/{full_hash}",
                 refer_count=0,
             )
-            .on_conflict("replace")
+            .on_conflict(
+                conflict_target=[FileInfo.full_hash],
+                update={
+                    FileInfo.sparse_hash: sparse_hash,
+                    FileInfo.file_size: file_size,
+                    FileInfo.mime_type: mime_type,
+                    FileInfo.storage_path: f"local://{sub_dir}/{full_hash}",
+                },
+            )
             .execute()
         )
         return str(final_path)
