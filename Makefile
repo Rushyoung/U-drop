@@ -8,3 +8,7 @@ vista:
 	cd frontend
 	npm install
 	npm run build
+
+preview:
+    cd frontend
+    npm run preview
