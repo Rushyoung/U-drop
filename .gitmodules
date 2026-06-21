@@ -1,0 +1,3 @@
+[submodule "native/ui"]
+	path = native/ui
+	url = https://github.com/ghboke/core-ui.git
