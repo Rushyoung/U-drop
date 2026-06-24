@@ -1,6 +1,6 @@
-from database.connect import Database as db
 from peewee import (
     SQL,
+    AutoField,
     BareField,
     BigIntegerField,
     CharField,
@@ -8,9 +8,10 @@ from peewee import (
     ForeignKeyField,
     IntegerField,
     Model,
-    PrimaryKeyField,
     TextField,
 )
+
+from server.database.connect import Database as db
 
 
 class BaseModel(Model):
@@ -31,42 +32,44 @@ class FileInfo(BaseModel):
 
 
 class Users(BaseModel):
-    account = TextField(unique=True)
-    created_at = IntegerField()
-    is_active = IntegerField(constraints=[SQL("DEFAULT 1")], null=True)
-    password_hash = TextField()
+    uuid = TextField(primary_key=True)
+    account = TextField(unique=True, null=False)
+    password_hash = TextField(null=False)
     role = TextField(constraints=[SQL("DEFAULT 'user'")], null=True)
-    sliding_window_days = IntegerField(constraints=[SQL("DEFAULT 30")], null=True)
-    storage_quota = BigIntegerField(constraints=[SQL("DEFAULT 5368709120")], null=True)
+    is_active = IntegerField(constraints=[SQL("DEFAULT 1")])
+    created_at = IntegerField(null=False)
     temp_expire_hours = IntegerField(constraints=[SQL("DEFAULT 24")], null=True)
+    sliding_window_days = IntegerField(constraints=[SQL("DEFAULT 30")], null=True)
     trash_expire_days = IntegerField(constraints=[SQL("DEFAULT 30")], null=True)
+    storage_quota = BigIntegerField(constraints=[SQL("DEFAULT 5368709120")], null=True)
     used_storage = BigIntegerField(constraints=[SQL("DEFAULT 0")], null=True)
-    uuid = TextField(null=True, primary_key=True)
 
     class Meta:  # type:ignore
         table_name = "users"
 
 
 class Devices(BaseModel):
-    device_id = TextField(null=True, primary_key=True)
-    device_name = TextField(null=True)
+    device_id = TextField(primary_key=True)
+    user_uuid = ForeignKeyField(field="uuid", model=Users)
     device_type = IntegerField()
-    last_seen = IntegerField()
-    user_uuid = ForeignKeyField(column_name="user_uuid", field="uuid", model=Users)
+    device_name = TextField()
+    last_seen = IntegerField(null=False)
+    # FOREIGN KEY (user_uuid) REFERENCES users(uuid) ON DELETE CASCADE
 
     class Meta:  # type:ignore
         table_name = "devices"
 
 
 class Messages(BaseModel):
-    # [TODO] 无法还原表原本设计
-    # id = PrimaryKeyField(IntegerField())
-    content = TextField(null=True)
-    deleted_at = IntegerField(null=True)
-    device = ForeignKeyField(column_name="device_id", field="device_id", model=Devices)
-    sender_uuid = ForeignKeyField(column_name="sender_uuid", field="uuid", model=Users)
-    timestamp = IntegerField(index=True)
+    id = AutoField()
+    sender_uuid = ForeignKeyField(field="uuid", model=Users)
+    device_id = ForeignKeyField(field="device_id", model=Devices)
     type = IntegerField()
+    content = TextField(null=True)
+    timestamp = IntegerField(index=True)
+    deleted_at = IntegerField(null=True)
+    # FOREIGN KEY (sender_uuid) REFERENCES users(uuid) ON DELETE CASCADE
+    # FOREIGN KEY (device_id) REFERENCES devices(device_id)
 
     class Meta:  # type:ignore
         table_name = "messages"
