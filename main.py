@@ -1,5 +1,15 @@
+import uvicorn
+
+from server.core.config import settings
+
+
 def main():
-    print("Hello from u-foundation!")
+    uvicorn.run(
+        "server.main:app",
+        host=settings.API_HOST,
+        port=settings.API_PORT,
+        reload=True,
+    )
 
 
 if __name__ == "__main__":

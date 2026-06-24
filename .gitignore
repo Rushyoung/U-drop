@@ -23,7 +23,15 @@ storage/
 
 # 编译产物
 *.o
+*.obj
 *.exp
+*.lib
+*.so
+*.dll
+*.wasm
+
+# C core build directory
+c_core/build/
 
 # 排除 AI 辅助与过程 JSON
 fix_styles.json
@@ -44,7 +52,3 @@ remove_all.json
 *.docx
 
 run_tests.*
-lib/thumbnail.lib
-md5.md
-GEMINI.md
-knowledge.md

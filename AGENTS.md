@@ -11,7 +11,9 @@ server/core/      ← Config, native wrapper, rate limiter, upload manager, webs
 server/db/        ← Peewee ORM models + repositories + services
 server/tasks/     ← asyncio background task system (see server/tasks/AGENTS.md)
 backend/sql/      ← SQL migration scripts (auto-applied on startup)
-c_core/           ← C/C++ hash core (BLAKE3 + MD5 + thumbnail), compiled to lib/
+c_core/           ← C/C++ hash core, compiled to lib/ (NOT tracked in git)
+c_core/src/        ← Project source (hash.c, thumbnail.cpp)
+c_core/modules/    ← Third-party deps (blake3/, stb/, types.h, MD5_raw.c)
 frontend/         ← Git submodule (https://github.com/Rushyoung/U-drop, branch vista)
 server-example/   ← Legacy reference structure, NOT active code
 ```
@@ -26,8 +28,10 @@ make vista                                  # frontend: npm install && npm run b
 ```
 
 **C core compilation** (produces `lib/thumbnail.dll` or `lib/thumbnail.so`):
-- Windows: `c_core\compile.bat` — must run from **x64 Native Tools Command Prompt for VS 2022** (WinError 193 otherwise)
-- Linux: `cd c_core && ./compile.sh`
+- `cd c_core && make` — Linux/macOS (default: thumbnail.so)
+- `cd c_core && make windows` — Windows (thumbnail.dll, requires MSVC toolchain)
+- `make clean` — remove all build artifacts
+- `make wasm` — build WASM module for frontend
 
 **Start backend**: `uvicorn server.main:app --host 0.0.0.0 --port 8000 --reload`
 (workdir must be project root so `server.core.config` resolves paths correctly)
