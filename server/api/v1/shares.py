@@ -3,11 +3,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse
 
-from server.core.logger import logger
-from server.database.services.share import ShareService
-from server.dependencies import get_current_session, get_share_service
-from server.schemas.base import ResponseSchema
-from server.schemas.shares import (
+from core.logger import logger
+from database.services.share import ShareService
+from dependencies import get_current_session, get_share_service
+from schemas.base import ResponseSchema
+from schemas.shares import (
     ShareCreateRequest,
     ShareCreateResponse,
     ShareItemResponse,

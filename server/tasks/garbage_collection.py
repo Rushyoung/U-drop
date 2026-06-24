@@ -1,13 +1,13 @@
 import os
 import time
 
-from server.core.config import settings
-from server.core.logger import logger
-from server.core.uploads_manager import uploads_manager
-from server.database.models import Attachment, FileInfo, Message, User
-from server.database.services.auth import AuthService
-from server.database.services.file import FileService
-from server.tasks.register import register
+from core.config import settings
+from core.logger import logger
+from core.uploads_manager import uploads_manager
+from database.models import Attachment, FileInfo, Message, User
+from database.services.auth import AuthService
+from database.services.file import FileService
+from tasks.register import register
 
 
 @register("garbage_collection", interval=3600)

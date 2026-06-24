@@ -4,7 +4,7 @@ import random
 from pathlib import Path
 from typing import Callable
 
-from server.tasks.register import TASKS
+from tasks.register import TASKS
 from core.logger import logger
 
 
@@ -20,7 +20,7 @@ def _discover_tasks():
             continue
 
         try:
-            import_path = f"server.tasks.{module_name}"
+            import_path = f"tasks.{module_name}"
             importlib.import_module(import_path)
         except Exception as e:
             logger.error(f"Failed to auto-discover task '{module_name}': {e}")

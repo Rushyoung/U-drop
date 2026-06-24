@@ -4,10 +4,10 @@ from typing import Optional, Tuple
 
 from fastapi.concurrency import run_in_threadpool
 
-from server.core.config import settings
-from server.core.logger import logger
-from server.core.native_wrapper import native_core
-from server.database.models import FileInfo
+from core.config import settings
+from core.logger import logger
+from core.native_wrapper import native_core
+from database.models import FileInfo
 
 
 class FileService:

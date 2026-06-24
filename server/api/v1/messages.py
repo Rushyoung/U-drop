@@ -4,19 +4,19 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from server.core.config import settings
-from server.core.exceptions import ForbiddenError, TaskNotFound
-from server.core.logger import logger
-from server.core.uploads_manager import UploadTask, uploads_manager
-from server.core.websocket_manager import ws_manager
-from server.database.models import Message
-from server.database.services.message import MessageService
-from server.dependencies import (
+from core.config import settings
+from core.exceptions import ForbiddenError, TaskNotFound
+from core.logger import logger
+from core.uploads_manager import UploadTask, uploads_manager
+from core.websocket_manager import ws_manager
+from database.models import Message
+from database.services.message import MessageService
+from dependencies import (
     get_current_session,
     get_message_service,
 )
-from server.schemas.base import ResponseSchema
-from server.schemas.messages import (
+from schemas.base import ResponseSchema
+from schemas.messages import (
     MessageCreateRequest,
     MessageCreateResponse,
     MessageResponse,

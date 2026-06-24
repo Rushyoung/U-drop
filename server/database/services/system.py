@@ -1,9 +1,9 @@
 import uuid
 
-from server.core.config import settings
-from server.core.logger import logger
-from server.core.system_guard import SystemGuard
-from server.database.models import (
+from core.config import settings
+from core.logger import logger
+from core.system_guard import SystemGuard
+from database.models import (
     Attachment,
     Device,
     FileInfo,
@@ -16,7 +16,7 @@ from server.database.models import (
     UploadTask,
     User,
 )
-from server.database.services.utils import AuthManager, get_time
+from database.services.utils import AuthManager, get_time
 
 
 class SystemService:

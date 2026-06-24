@@ -22,7 +22,7 @@ server/tasks/
 在 `server/tasks/` 下新建 `.py` 文件，使用 `@register` 装饰即可：
 
 ```python
-from server.tasks.register import register
+from tasks.register import register
 
 @register("task_name", interval=3600)
 def my_task():
@@ -44,7 +44,7 @@ def my_task():
 由 `server/main.py` 的 `lifespan` 管理：
 
 ```python
-from server.tasks.setup import setup as task_setup
+from tasks.setup import setup as task_setup
 
 task_manager = task_setup()  # 发现任务并启动
 yield

@@ -4,10 +4,10 @@ import time
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from server.core.exceptions import TokenExpired
-from server.core.logger import logger
-from server.core.websocket_manager import ws_manager
-from server.schemas.websocket import UdropWSMessage
+from core.exceptions import TokenExpired
+from core.logger import logger
+from core.websocket_manager import ws_manager
+from schemas.websocket import UdropWSMessage
 
 router = APIRouter(tags=["WebSocket 实时信令"])
 
@@ -49,7 +49,7 @@ async def websocket_endpoint(
     WebSocket 信令真实入口。
     优化：不再通过 Depends 注入 auth_service，避免在整个长连接期间占用数据库句柄。
     """
-    from server.database.services.auth import AuthService
+    from database.services.auth import AuthService
 
     user_uuid = None
     device_id = None

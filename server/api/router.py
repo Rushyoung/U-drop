@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from server.api.v1 import auth, files, manage, messages, shares, system, websocket
+from api.v1 import auth, files, manage, messages, shares, system, websocket
 
 router = APIRouter()
 

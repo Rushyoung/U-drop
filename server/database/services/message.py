@@ -3,10 +3,10 @@ from typing import List, Optional
 
 from peewee import fn
 
-from server.core.exceptions import ForbiddenError
-from server.core.logger import logger
-from server.core.uploads_manager import uploads_manager
-from server.database.models import (
+from core.exceptions import ForbiddenError
+from core.logger import logger
+from core.uploads_manager import uploads_manager
+from database.models import (
     Attachment,
     Device,
     FileInfo,
@@ -15,8 +15,8 @@ from server.database.models import (
     MessageTag,
     User,
 )
-from server.database.services.utils import get_time
-from server.schemas.messages import (
+from database.services.utils import get_time
+from schemas.messages import (
     BigFileReference,
     BigFileResponse,
     MessageResponse,

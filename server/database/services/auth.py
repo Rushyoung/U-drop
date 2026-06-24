@@ -2,16 +2,16 @@ import secrets
 import uuid
 from threading import Lock
 
-from server.core.exceptions import (
+from core.exceptions import (
     AccountRepeat,
     ForbiddenError,
     LoginError,
     TokenExpired,
 )
-from server.core.logger import logger
-from server.database.models import Attachment, Device, FileInfo, Message, Session, User
-from server.database.services.utils import ONE_DAY, AuthManager, get_time
-from server.schemas.auth import LoginData
+from core.logger import logger
+from database.models import Attachments, Devices, FileInfo, Messages, Sessions, Users
+from database.services.utils import ONE_DAY, AuthManager, get_time
+from schemas.auth import LoginData
 
 _SESSION_CACHE: dict[str, dict] = {}
 _SESSION_LOCK = Lock()
@@ -31,7 +31,7 @@ def _update_cache_safe(token: str, info: dict | None):
                 oldest_key = next(iter(_SESSION_CACHE))
                 _SESSION_CACHE.pop(oldest_key)
                 logger.debug(
-                    f"Session GC | 达到上限，弹出最旧缓存: {oldest_key[:10]}..."
+                    f"Sessions GC | 达到上限，弹出最旧缓存: {oldest_key[:10]}..."
                 )
             except StopIteration:
                 pass
@@ -40,10 +40,10 @@ def _update_cache_safe(token: str, info: dict | None):
 
 class AuthService:
     def register_user(self, account: str, plain_password: str) -> bool:
-        if not User.select().where(User.account == account).exists():
+        if not Users.select().where(Users.account == account).exists():
             user_uuid = str(uuid.uuid4())
             password_hash = AuthManager.get_password_hash(plain_password)
-            User.create(
+            Users.create(
                 uuid=user_uuid,
                 account=account,
                 password_hash=password_hash,
@@ -65,7 +65,7 @@ class AuthService:
         remember_me: bool = False,
         **kwargs,
     ) -> LoginData:
-        info = User.get_or_none(User.account == account)
+        info = Users.get_or_none(Users.account == account)
         if info is None:
             AuthManager.get_password_hash("dummy_password")
             logger.warning(f"登录失败: 账号不存在 -> {account}")
@@ -80,8 +80,8 @@ class AuthService:
             logger.warning(f"登录失败: 密码错误 -> {account}")
             raise LoginError
 
-        row = Session.get_or_none(
-            (Session.user_uuid == info.uuid) & (Session.device_id == device_id)
+        row = Sessions.get_or_none(
+            (Sessions.user_uuid == info.uuid) & (Sessions.device_id == device_id)
         )
 
         is_sliding = 1 if remember_me else 0
@@ -99,7 +99,7 @@ class AuthService:
 
         if row is None or single_use:
             token = secrets.token_urlsafe(32)
-            Session.create(
+            Sessions.create(
                 bearer_token=token,
                 user_uuid=info.uuid,
                 device_id=device_id,
@@ -107,7 +107,7 @@ class AuthService:
                 is_single_use=(1 if single_use else 0),
                 is_sliding=is_sliding,
             )
-            Device.insert(
+            Devices.insert(
                 device_id=device_id,
                 user_uuid=info.uuid,
                 device_type=device_type,
@@ -115,20 +115,21 @@ class AuthService:
                 last_seen=get_time(),
             ).on_conflict("replace").execute()
             logger.info(
-                f"登录成功 | 用户: {account} | 创建新 Session | 有效期: {actual_duration}s | Sliding: {is_sliding}"
+                f"登录成功 | 用户: {account} | 创建新 Sessions | 有效期: {actual_duration}s | Sliding: {is_sliding}"
             )
         else:
             token = row.bearer_token
             (
-                Session.update(expire_time=expire_at, is_sliding=is_sliding)
-                .where(Session.bearer_token == token)
+                Sessions.update(expire_time=expire_at, is_sliding=is_sliding)
+                .where(Sessions.bearer_token == token)
                 .execute()
             )
             logger.info(
-                f"登录成功 | 用户: {account} | 刷新现有 Session | 新有效期: {actual_duration}s | Sliding: {is_sliding}"
+                f"登录成功 | 用户: {account} | 刷新现有 Sessions | 新有效期: {actual_duration}s | Sliding: {is_sliding}"
             )
 
-        row = Session.get_or_none(Session.bearer_token == token)
+        row = Sessions.get_or_none(Sessions.bearer_token == token)
+        logger.info(f"从缓存获取：{row}")
         _update_cache_safe(token, dict(row) if row else None)
 
         return LoginData(bearer=token)
@@ -140,21 +141,21 @@ class AuthService:
             info = _SESSION_CACHE.get(bearer)
 
         if info:
-            logger.debug(f"Session 缓存命中: {bearer[:10]}...")
+            logger.debug(f"Sessions 缓存命中: {bearer[:10]}...")
         else:
-            row = Session.get_or_none(Session.bearer_token == bearer)
+            row = Sessions.get_or_none(Sessions.bearer_token == bearer)
             if row:
                 info = dict(row)
                 _update_cache_safe(bearer, info)
-                logger.debug(f"Session 缓存回填 (查库成功): {bearer[:10]}...")
+                logger.debug(f"Sessions 缓存回填 (查库成功): {bearer[:10]}...")
             else:
-                logger.warning(f"Session 校验失败: Token 不存在 -> {bearer[:10]}...")
+                logger.warning(f"Sessions 校验失败: Token 不存在 -> {bearer[:10]}...")
                 raise TokenExpired
 
-        user_info = User.get_or_none(User.uuid == info["user_uuid"])
+        user_info = Users.get_or_none(Users.uuid == info["user_uuid"])
         if not user_info or not user_info.is_active:
             logger.warning(
-                f"Session 熔断: 关联用户已禁用或不存在 -> {info['user_uuid'][:8]}"
+                f"Sessions 熔断: 关联用户已禁用或不存在 -> {info['user_uuid'][:8]}"
             )
             self.logout(bearer)
             raise TokenExpired
@@ -162,7 +163,7 @@ class AuthService:
         if expire_enable:
             if info["expire_time"] < now:
                 logger.warning(
-                    f"Session 已过期: {bearer[:10]}... (到期: {info['expire_time']}, 当前: {now})"
+                    f"Sessions 已过期: {bearer[:10]}... (到期: {info['expire_time']}, 当前: {now})"
                 )
                 self.logout(bearer)
                 raise TokenExpired
@@ -173,15 +174,15 @@ class AuthService:
             if remaining < (window_seconds // 2):
                 new_expire = now + window_seconds
                 (
-                    Session.update(expire_time=new_expire)
-                    .where(Session.bearer_token == bearer)
+                    Sessions.update(expire_time=new_expire)
+                    .where(Sessions.bearer_token == bearer)
                     .execute()
                 )
                 updated_info = dict(info)
                 updated_info["expire_time"] = new_expire
                 _update_cache_safe(bearer, updated_info)
                 logger.info(
-                    f"Session 自动滑动续期 | 用户: {user_info.account} | 延长至: {user_info.sliding_window_days}天后"
+                    f"Sessions 自动滑动续期 | 用户: {user_info.account} | 延长至: {user_info.sliding_window_days}天后"
                 )
 
         if info["is_single_use"] == 1:
@@ -193,15 +194,15 @@ class AuthService:
     def logout(self, bearer_token: str) -> None:
         with _SESSION_LOCK:
             _SESSION_CACHE.pop(bearer_token, None)
-        count = Session.delete().where(Session.bearer_token == bearer_token).execute()
+        count = Sessions.delete().where(Sessions.bearer_token == bearer_token).execute()
         if count > 0:
-            logger.info(f"Session 已注销: {bearer_token[:10]}...")
+            logger.info(f"Sessions 已注销: {bearer_token[:10]}...")
         else:
             logger.warning(f"注销失败: Token 不存在或已失效 -> {bearer_token[:10]}...")
             raise TokenExpired
 
     def get_user_by_uuid(self, user_uuid: str):
-        return User.get_or_none(User.uuid == user_uuid)
+        return Users.get_or_none(Users.uuid == user_uuid)
 
     def update_user_settings(
         self,
@@ -222,36 +223,36 @@ class AuthService:
             updates["sliding_window_days"] = sliding_window_days
         if not updates:
             return 0
-        return User.update(**updates).where(User.uuid == user_uuid).execute()
+        return Users.update(**updates).where(Users.uuid == user_uuid).execute()
 
     def update_device_name(self, device_id: str, device_name: str):
         logger.info(f"更新设备 {device_id[:8]} 名称为: {device_name}")
         return (
-            Device.update(device_name=device_name)
-            .where(Device.device_id == device_id)
+            Devices.update(device_name=device_name)
+            .where(Devices.device_id == device_id)
             .execute()
         )
 
     def touch_device(self, device_id: str):
         return (
-            Device.update(last_seen=get_time())
-            .where(Device.device_id == device_id)
+            Devices.update(last_seen=get_time())
+            .where(Devices.device_id == device_id)
             .execute()
         )
 
     def list_user_devices(self, user_uuid: str) -> list[dict]:
         rows = (
-            Device.select(Device)
-            .join(Session, on=(Device.device_id == Session.device_id))
-            .where(Device.user_uuid == user_uuid)
+            Devices.select(Devices)
+            .join(Sessions, on=(Devices.device_id == Sessions.device_id))
+            .where(Devices.user_uuid == user_uuid)
             .distinct()
             .execute()
         )
         return [dict(r) for r in rows]
 
     def revoke_device(self, user_uuid: str, device_id: str) -> bool:
-        device = Device.get_or_none(Device.device_id == device_id)
-        if not device or device.user_uuid != user_uuid:
+        devices = Devices.get_or_none(Devices.device_id == device_id)
+        if not devices or devices.user_uuid != user_uuid:
             logger.warning(
                 f"设备下线失败 | 设备 {device_id[:8]} 不属于用户 {user_uuid[:8]}"
             )
@@ -265,10 +266,10 @@ class AuthService:
                     _SESSION_CACHE.pop(tk, None)
                     kicked_count += 1
 
-        Session.delete().where(Session.device_id == device_id).execute()
+        Sessions.delete().where(Sessions.device_id == device_id).execute()
 
         logger.warning(
-            f"设备已下线 | 用户 {user_uuid[:8]} 使得设备 {device_id[:8]} ({device['device_name']}) 的会话失效。清理了 {kicked_count} 个 Token。"
+            f"设备已下线 | 用户 {user_uuid[:8]} 使得设备 {device_id[:8]} ({devices['device_name']}) 的会话失效。清理了 {kicked_count} 个 Token。"
         )
         return True
 
@@ -277,8 +278,8 @@ class AuthService:
             f"审计 | 管理员 {admin_uuid[:8]} 修改用户 {target_uuid[:8]} 配额为 {storage_quota} Bytes"
         )
         return (
-            User.update(storage_quota=storage_quota)
-            .where(User.uuid == target_uuid)
+            Users.update(storage_quota=storage_quota)
+            .where(Users.uuid == target_uuid)
             .execute()
         )
 
@@ -296,12 +297,12 @@ class AuthService:
                 for tk in cache_keys:
                     if _SESSION_CACHE[tk]["user_uuid"] == target_uuid:
                         _SESSION_CACHE.pop(tk, None)
-                        Session.delete().where(Session.bearer_token == tk).execute()
+                        Sessions.delete().where(Sessions.bearer_token == tk).execute()
             logger.info(f"审计 | 用户 {target_uuid[:8]} 已被强制下线")
 
         return (
-            User.update(is_active=1 if is_active else 0)
-            .where(User.uuid == target_uuid)
+            Users.update(is_active=1 if is_active else 0)
+            .where(Users.uuid == target_uuid)
             .execute()
         )
 
@@ -309,7 +310,7 @@ class AuthService:
         if admin_uuid == target_uuid:
             raise LoginError()
 
-        user = User.get_or_none(User.uuid == target_uuid)
+        user = Users.get_or_none(Users.uuid == target_uuid)
         if not user:
             return
 
@@ -318,9 +319,9 @@ class AuthService:
         )
 
         rows = (
-            Attachment.select(Attachment.file_hash)
-            .join(Message, on=(Attachment.message_id == Message.id))
-            .where(Message.sender_uuid == target_uuid)
+            Attachments.select(Attachments.file_hash)
+            .join(Messages, on=(Attachments.message == Messages.id))
+            .where(Messages.sender_uuid == target_uuid)
             .execute()
         )
         hashes = [r.file_hash for r in rows]
@@ -342,19 +343,19 @@ class AuthService:
                     _SESSION_CACHE.pop(tk, None)
                     kicked_count += 1
 
-        User.delete().where(User.uuid == target_uuid).execute()
-        logger.success(f"审计 | 用户销毁完成。清理了 {kicked_count} 个活跃 Session。")
+        Users.delete().where(Users.uuid == target_uuid).execute()
+        logger.success(f"审计 | 用户销毁完成。清理了 {kicked_count} 个活跃 Sessions。")
 
     def change_password(self, user_uuid: str, old_password: str, new_password: str):
-        user = User.get_or_none(User.uuid == user_uuid)
-        if not user or not AuthManager.verify_password_hash(
-            old_password, user.password_hash
+        User = Users.get_or_none(Users.uuid == user_uuid)
+        if not User or not AuthManager.verify_password_hash(
+            old_password, User.password_hash
         ):
             logger.warning(f"密码修改失败 | 用户 {user_uuid[:8]} 旧密码验证不通过")
             raise LoginError()
 
         new_hash = AuthManager.get_password_hash(new_password)
-        User.update(password_hash=new_hash).where(User.uuid == user_uuid).execute()
+        Users.update(password_hash=new_hash).where(Users.uuid == user_uuid).execute()
         logger.success(f"密码修改成功 | 用户 {user_uuid[:8]}")
 
     @staticmethod
@@ -371,4 +372,4 @@ class AuthService:
                     expired_count += 1
 
         if expired_count > 0:
-            logger.info(f"GC | 已从内存缓存清理 {expired_count} 个过期 Session")
+            logger.info(f"GC | 已从内存缓存清理 {expired_count} 个过期 Sessions")

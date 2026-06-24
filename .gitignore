@@ -45,3 +45,6 @@ remove_all.json
 
 run_tests.*
 lib/thumbnail.lib
+md5.md
+GEMINI.md
+knowledge.md

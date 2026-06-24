@@ -16,8 +16,8 @@ from fastapi.staticfiles import StaticFiles
 from schemas.base import ResponseSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from server.database.setup import setup as database_setup
-from server.tasks.setup import setup as task_setup
+from database.setup import setup as database_setup
+from tasks.setup import setup as task_setup
 
 
 def ensure_directories():
@@ -34,7 +34,7 @@ def ensure_directories():
 
 
 def bootstrap_system():
-    from server.database.services.system import SystemService
+    from database.services.system import SystemService
 
     system_service = SystemService()
     if not system_service.has_admin():
@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
     ensure_directories()
     database_setup()
 
-    from server.database.services.system import SystemService
+    from database.services.system import SystemService
 
     system_service = SystemService()
     SystemGuard.sync(system_service.get_all_settings_dict(), system_service.has_admin())

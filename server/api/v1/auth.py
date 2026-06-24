@@ -2,16 +2,16 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from server.core.exceptions import AccountRepeat
-from server.core.logger import logger
-from server.core.system_guard import feature_gate
-from server.core.websocket_manager import ws_manager
-from server.database.services.auth import AuthService
-from server.dependencies import (
+from core.exceptions import AccountRepeat
+from core.logger import logger
+from core.system_guard import feature_gate
+from core.websocket_manager import ws_manager
+from database.services.auth import AuthService
+from dependencies import (
     get_auth_service,
     get_current_session,
 )
-from server.schemas.auth import (
+from schemas.auth import (
     DeviceResponse,
     DeviceUpdateRequest,
     LoginData,
@@ -21,7 +21,7 @@ from server.schemas.auth import (
     UserPublic,
     UserSettingsUpdate,
 )
-from server.schemas.base import COMMON_ERRORS, ResponseSchema
+from schemas.base import COMMON_ERRORS, ResponseSchema
 
 router = APIRouter(tags=["Phase 1: 账号与设备管理"])
 

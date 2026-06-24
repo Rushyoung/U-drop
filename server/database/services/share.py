@@ -1,11 +1,11 @@
 import secrets
 from typing import Optional, Tuple
 
-from server.core.exceptions import ForbiddenError, UdropException
-from server.core.logger import logger
-from server.database.models import Attachment, FileInfo, Message, Share
-from server.database.services.file import FileService
-from server.database.services.utils import AuthManager, get_time
+from core.exceptions import ForbiddenError, UdropException
+from core.logger import logger
+from database.models import Attachment, FileInfo, Message, Share
+from database.services.file import FileService
+from database.services.utils import AuthManager, get_time
 
 
 class ShareError(UdropException):

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from server.database.services.system import SystemService
-from server.dependencies import get_system_service
-from server.schemas.base import ResponseSchema
-from server.schemas.system import SystemSetupRequest, SystemStatusResponse
+from database.services.system import SystemService
+from dependencies import get_system_service
+from schemas.base import ResponseSchema
+from schemas.system import SystemSetupRequest, SystemStatusResponse
 
 router = APIRouter(tags=["System: 系统状态与初始化向导"])
 

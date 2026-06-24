@@ -10,29 +10,29 @@ from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 
-from server.core.config import settings
-from server.core.exceptions import (
+from core.config import settings
+from core.exceptions import (
     ForbiddenError,
     HashMismatch,
     InternalError,
     TaskNotFound,
 )
-from server.core.logger import logger
-from server.core.native_wrapper import native_core
-from server.core.uploads_manager import UploadTask, uploads_manager
-from server.core.websocket_manager import ws_manager
-from server.database.models import Attachment, Message
-from server.database.services.auth import AuthService
-from server.database.services.file import FileService
-from server.database.services.message import MessageService
-from server.dependencies import (
+from core.logger import logger
+from core.native_wrapper import native_core
+from core.uploads_manager import UploadTask, uploads_manager
+from core.websocket_manager import ws_manager
+from database.models import Attachment, Message
+from database.services.auth import AuthService
+from database.services.file import FileService
+from database.services.message import MessageService
+from dependencies import (
     get_auth_service,
     get_current_session,
     get_file_service,
     get_message_service,
 )
-from server.schemas.base import COMMON_ERRORS, ResponseSchema
-from server.schemas.messages import BigFileResponse
+from schemas.base import COMMON_ERRORS, ResponseSchema
+from schemas.messages import BigFileResponse
 
 router = APIRouter(tags=["Phase 3: 极速文件流与配额管理"])
 

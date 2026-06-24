@@ -2,14 +2,14 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from server.core.logger import logger
-from server.database.models import User
-from server.database.services.auth import AuthService
-from server.database.services.system import SystemService
-from server.database.services.utils import AuthManager
-from server.dependencies import get_auth_service, get_current_admin, get_system_service
-from server.schemas.base import ResponseSchema
-from server.schemas.system import (
+from core.logger import logger
+from database.models import User
+from database.services.auth import AuthService
+from database.services.system import SystemService
+from database.services.utils import AuthManager
+from dependencies import get_auth_service, get_current_admin, get_system_service
+from schemas.base import ResponseSchema
+from schemas.system import (
     FactoryResetRequest,
     SystemSettingsUpdateRequest,
     UserManageResponse,

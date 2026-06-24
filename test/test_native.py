@@ -5,8 +5,8 @@ from pathlib import Path
 # 将 source/py 加入路径
 sys.path.append(str(Path(__file__).resolve().parents[1] / "source" / "py"))
 
-from core.native_wrapper import native_core
-from core.config import settings
+from server.core.native_wrapper import native_core
+from server.core.config import settings
 
 def test_native():
     print("--- 开始原生库功能测试 ---")
