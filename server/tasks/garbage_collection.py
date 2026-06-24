@@ -7,7 +7,7 @@ from server.core.uploads_manager import uploads_manager
 from server.database.models import Attachments, FileInfo, Messages, Users
 from server.database.services.auth import AuthService
 from server.database.services.file import FileService
-from tasks.register import register
+from server.tasks.register import register
 
 
 @register("garbage_collection", interval=3600)

@@ -1,7 +1,6 @@
 from peewee import (
     SQL,
     AutoField,
-    BareField,
     BigIntegerField,
     CharField,
     CompositeKey,
@@ -146,15 +145,6 @@ class Shares(BaseModel):
 
     class Meta:  # type:ignore
         table_name = "shares"
-
-
-class SqliteSequence(BaseModel):
-    name = BareField(null=True)
-    seq = BareField(null=True)
-
-    class Meta:  # type:ignore
-        table_name = "sqlite_sequence"
-        primary_key = False
 
 
 class SysSettings(BaseModel):

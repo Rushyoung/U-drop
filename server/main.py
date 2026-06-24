@@ -34,7 +34,7 @@ def ensure_directories():
 
 
 def bootstrap_system():
-    from database.services.system import SystemService
+    from server.database.services.system import SystemService
 
     system_service = SystemService()
     if not system_service.has_admin():
@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
     ensure_directories()
     database_setup()
 
-    from database.services.system import SystemService
+    from server.database.services.system import SystemService
 
     system_service = SystemService()
     SystemGuard.sync(system_service.get_all_settings_dict(), system_service.has_admin())

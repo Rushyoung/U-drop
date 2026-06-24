@@ -4,8 +4,8 @@ import random
 from pathlib import Path
 from typing import Callable
 
-from server.tasks.register import TASKS
 from server.core.logger import logger
+from server.tasks.register import TASKS
 
 
 def _discover_tasks():
@@ -20,7 +20,7 @@ def _discover_tasks():
             continue
 
         try:
-            import_path = f"tasks.{module_name}"
+            import_path = f"server.tasks.{module_name}"
             importlib.import_module(import_path)
         except Exception as e:
             logger.error(f"Failed to auto-discover task '{module_name}': {e}")
@@ -42,7 +42,9 @@ async def _run_periodic_task(name: str, func: Callable, base_interval: int):
         while True:
             await asyncio.sleep(interval)
             interval = base_interval + random.randint(-5, 5)
-            await asyncio.to_thread(func) if not asyncio.iscoroutinefunction(func) else await func()
+            await asyncio.to_thread(func) if not asyncio.iscoroutinefunction(
+                func
+            ) else await func()
     except asyncio.CancelledError:
         logger.info(f"Task '{name}' stopped.")
     except Exception as e:
