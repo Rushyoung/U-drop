@@ -49,7 +49,7 @@ class Users(BaseModel):
 
 class Devices(BaseModel):
     device_id = TextField(primary_key=True)
-    user_uuid = ForeignKeyField(field="uuid", model=Users)
+    user_uuid = ForeignKeyField(field="uuid", model=Users, column_name="user_uuid")
     device_type = IntegerField()
     device_name = TextField()
     last_seen = IntegerField(null=False)
