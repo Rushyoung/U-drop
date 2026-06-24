@@ -137,7 +137,7 @@ class AuthService:
 
         row = Sessions.get_or_none(Sessions.bearer_token == token)
         logger.info(f"从缓存获取：{row}")
-        _update_cache_safe(token, dict(row) if row else None)
+        _update_cache_safe(token, row.__data__ if row else None)
 
         return LoginData(bearer=token)
 
@@ -152,7 +152,7 @@ class AuthService:
         else:
             row = Sessions.get_or_none(Sessions.bearer_token == bearer)
             if row:
-                info = dict(row)
+                info = row.__data__
                 _update_cache_safe(bearer, info)
                 logger.debug(f"Sessions 缓存回填 (查库成功): {bearer[:10]}...")
             else:
@@ -255,7 +255,7 @@ class AuthService:
             .distinct()
             .execute()
         )
-        return [dict(r) for r in rows]
+        return [r.__data__ for r in rows]
 
     def revoke_device(self, user_uuid: str, device_id: str) -> bool:
         devices = Devices.get_or_none(Devices.device_id == device_id)
@@ -276,7 +276,7 @@ class AuthService:
         Sessions.delete().where(Sessions.device_id == device_id).execute()
 
         logger.warning(
-            f"设备已下线 | 用户 {user_uuid[:8]} 使得设备 {device_id[:8]} ({devices['device_name']}) 的会话失效。清理了 {kicked_count} 个 Token。"
+            f"设备已下线 | 用户 {user_uuid[:8]} 使得设备 {device_id[:8]} ({devices.device_name}) 的会话失效。清理了 {kicked_count} 个 Token。"
         )
         return True
 

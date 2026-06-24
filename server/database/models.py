@@ -61,8 +61,8 @@ class Devices(BaseModel):
 
 class Messages(BaseModel):
     id = AutoField()
-    sender_uuid = ForeignKeyField(field="uuid", model=Users)
-    device_id = ForeignKeyField(field="device_id", model=Devices)
+    sender_uuid = ForeignKeyField(column_name="sender_uuid", field="uuid", model=Users)
+    device_id = ForeignKeyField(column_name="device_id", field="device_id", model=Devices)
     type = IntegerField()
     content = TextField(null=True)
     timestamp = IntegerField(index=True)

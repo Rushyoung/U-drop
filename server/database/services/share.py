@@ -67,7 +67,7 @@ class SharesService:
         )
         return Shares_id, expire_time
 
-    def list_user_Sharess(self, user_uuid: str):
+    def list_user_shares(self, user_uuid: str):
         return list(
             Shares.select(Shares, FileInfo.file_size)
             .join(

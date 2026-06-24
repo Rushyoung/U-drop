@@ -75,7 +75,7 @@ async def get_me(
 ):
     """返回当前用户的配额、已用空间及内存中的最新 Sync Seq"""
     user_row = auth_service.get_user_by_uuid(session["user_uuid"])
-    user_dict = dict(user_row)
+    user_dict = user_row.__data__
     user_dict["sync_seq"] = ws_manager.get_current_seq(session["user_uuid"])
 
     return ResponseSchema.ok(data=UserPublic.model_validate(user_dict))
@@ -167,5 +167,7 @@ async def revoke_device(
     """强制注销某个设备，使其所有会话失效并踢出"""
     success = auth_service.revoke_device(session["user_uuid"], device_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Devices not found or access denied")
+        raise HTTPException(
+            status_code=404, detail="Devices not found or access denied"
+        )
     return ResponseSchema.ok(Messages="Devices revoked successfully.")
