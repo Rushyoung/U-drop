@@ -4,8 +4,8 @@ import random
 from pathlib import Path
 from typing import Callable
 
-from tasks.register import TASKS
-from core.logger import logger
+from server.tasks.register import TASKS
+from server.core.logger import logger
 
 
 def _discover_tasks():

@@ -7,7 +7,7 @@ from pathlib import Path
 # 引入原生库
 project_root = Path(__file__).resolve().parents[1]
 sys.path.append(str(project_root / "source" / "py"))
-from core.native_wrapper import native_core
+from server.core.native_wrapper import native_core
 
 def run_upload_tests():
     client = UdropClient()

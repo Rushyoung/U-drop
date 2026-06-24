@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Optional
 
-from core.config import settings
-from core.logger import logger
+from server.core.config import settings
+from server.core.logger import logger
 from peewee import SqliteDatabase
 
 

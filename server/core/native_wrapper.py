@@ -2,7 +2,7 @@ import ctypes
 import os
 import sys
 from pathlib import Path
-from core.logger import logger
+from server.core.logger import logger
 
 class NativeCore:
     def __init__(self):

@@ -1,6 +1,6 @@
-from database.connect import Database
-from database.models import ALL_MODELS, SysSetting
-from core.logger import logger
+from server.core.logger import logger
+from server.database.connect import Database
+from server.database.models import ALL_MODELS, SysSetting
 
 
 def setup():

@@ -2,7 +2,7 @@ import time
 import os
 from typing import Dict, Optional, List
 from pydantic import BaseModel
-from core.logger import logger
+from server.core.logger import logger
 
 class UploadTask(BaseModel):
     """内存中的上传任务模型"""

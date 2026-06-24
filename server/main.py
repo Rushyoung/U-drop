@@ -2,22 +2,22 @@ import time
 from contextlib import asynccontextmanager
 
 import uvicorn
-from api.router import router
-from core.config import settings
-from core.exceptions import UdropException
-from core.logger import logger, setup_logger
-from core.rate_limiter import RateLimitMiddleware
-from core.system_guard import SystemGuard
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from schemas.base import ResponseSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from database.setup import setup as database_setup
-from tasks.setup import setup as task_setup
+from server.api.router import router
+from server.core.config import settings
+from server.core.exceptions import UdropException
+from server.core.logger import logger, setup_logger
+from server.core.rate_limiter import RateLimitMiddleware
+from server.core.system_guard import SystemGuard
+from server.database.setup import setup as database_setup
+from server.schemas.base import ResponseSchema
+from server.tasks.setup import setup as task_setup
 
 
 def ensure_directories():
