@@ -3,13 +3,13 @@ import time
 from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from core.exceptions import TokenExpired
-from core.logger import logger
-from database.services.auth import AuthService
-from database.services.file import FileService
-from database.services.message import MessageService
-from database.services.share import ShareService
-from database.services.system import SystemService
+from server.core.exceptions import TokenExpired
+from server.core.logger import logger
+from server.database.services.auth import AuthService
+from server.database.services.file import FileService
+from server.database.services.message import MessageService
+from server.database.services.share import SharesService
+from server.database.services.system import SystemService
 
 security = HTTPBearer(auto_error=False)
 
@@ -68,8 +68,8 @@ def get_message_service() -> MessageService:
 
 def get_share_service(
     file_service: FileService = Depends(get_file_service),
-) -> ShareService:
-    return ShareService(file_service)
+) -> SharesService:
+    return SharesService(file_service)
 
 
 def get_system_service() -> SystemService:

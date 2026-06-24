@@ -10,7 +10,7 @@
 
 - **Monorepo 架构**：FastAPI 后端 + Vue 3 前端 + C 哈希核心（支持 Native/WASM）。
 - **极致传输**：支持 Proof of Possession (PoP) 秒传校验，分片上传与哈希计算并发执行。
-- **安全加固**：逻辑 ID 寻址（防 IDOR 越权）、基于 IP 的认证限流、滑动窗口 Session 续期。
+- **安全加固**：逻辑 ID 寻址（防 IDOR 越权）、基于 IP 的认证限流、滑动窗口 Sessions 续期。
 - **智能存储**：基于 Blake3 的内容寻址存储 (CAS)，物理去重，内置大文件分析工具。
 - **UI 设计**：遵循工业新拟态 (Industrial Neumorphism) 审美。
 

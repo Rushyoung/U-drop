@@ -133,10 +133,10 @@ async def audit_middleware(request: Request, call_next):
 
 @app.exception_handler(UdropException)
 async def udrop_exception_handler(req: Request, exc: UdropException):
-    logger.warning(f"业务异常: {exc.message} (Code: {exc.code}) | 路径: {req.url.path}")
+    logger.warning(f"业务异常: {exc.Messages} (Code: {exc.code}) | 路径: {req.url.path}")
     return JSONResponse(
         status_code=exc.code,
-        content=ResponseSchema.fail(exc.message, exc.code).model_dump(),
+        content=ResponseSchema.fail(exc.Messages, exc.code).model_dump(),
     )
 
 

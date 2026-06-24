@@ -81,7 +81,7 @@ class Attachments(BaseModel):
     file_hash = ForeignKeyField(
         column_name="file_hash", field="full_hash", model=FileInfo
     )
-    message = ForeignKeyField(column_name="message_id", field="id", model=Messages)
+    Messages = ForeignKeyField(column_name="message_id", field="id", model=Messages)
     sort_order = IntegerField(constraints=[SQL("DEFAULT 0")], null=True)
 
     class Meta:  # type:ignore
@@ -101,13 +101,13 @@ class Hashtags(BaseModel):
 
 
 class MessagesTags(BaseModel):
-    message = ForeignKeyField(column_name="message_id", field="id", model=Messages)
+    Messages = ForeignKeyField(column_name="message_id", field="id", model=Messages)
     tag = ForeignKeyField(column_name="tag_id", field="id", model=Hashtags)
 
     class Meta:  # type:ignore
         table_name = "messages_tags"
-        indexes = ((("message", "tag"), True),)
-        primary_key = CompositeKey("message", "tag")
+        indexes = ((("Messages", "tag"), True),)
+        primary_key = CompositeKey("Messages", "tag")
 
 
 class SchemaMigrations(BaseModel):

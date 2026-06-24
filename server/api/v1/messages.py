@@ -4,19 +4,19 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from core.config import settings
-from core.exceptions import ForbiddenError, TaskNotFound
-from core.logger import logger
-from core.uploads_manager import UploadTask, uploads_manager
-from core.websocket_manager import ws_manager
-from database.models import Message
-from database.services.message import MessageService
-from dependencies import (
+from server.core.config import settings
+from server.core.exceptions import ForbiddenError, TaskNotFound
+from server.core.logger import logger
+from server.core.uploads_manager import UploadTasks, uploads_manager
+from server.core.websocket_manager import ws_manager
+from server.database.models import Messages
+from server.database.services.message import MessageService
+from server.dependencies import (
     get_current_session,
     get_message_service,
 )
-from schemas.base import ResponseSchema
-from schemas.messages import (
+from server.schemas.base import ResponseSchema
+from server.schemas.messages import (
     MessageCreateRequest,
     MessageCreateResponse,
     MessageResponse,
@@ -69,7 +69,7 @@ async def create_message(
             temp_dir.mkdir(parents=True, exist_ok=True)
             temp_path = temp_dir / f"{upload_id}.tmp"
 
-            task = UploadTask(
+            task = UploadTasks(
                 upload_id=upload_id,
                 user_uuid=user_uuid,
                 message_id=message_id,
@@ -94,7 +94,7 @@ async def create_message(
             message_id=message_id,
             upload_tasks=upload_infos,
         ),
-        message="Message created.",
+        Messages="Messages created.",
     )
 
 
@@ -112,7 +112,7 @@ async def list_messages(
     anchor_id: Optional[int] = Query(None, description="锚点消息 ID"),
     limit: int = Query(50, ge=1, le=100),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
-    hashtag: Optional[str] = Query(None, description="标签搜索"),
+    Hashtags: Optional[str] = Query(None, description="标签搜索"),
     session=Depends(get_current_session),
     message_service: MessageService = Depends(get_message_service),
 ):
@@ -122,7 +122,7 @@ async def list_messages(
         anchor_id=anchor_id,
         mode=mode,
         keyword=keyword,
-        hashtag=hashtag,
+        Hashtags=Hashtags,
     )
     logger.info(
         f"Timeline | 用户 {session['user_uuid'][:8]} 拉取消息 | Mode: {mode} | Anchor: {anchor_id} | 结果: {len(results)} 条"
@@ -153,7 +153,7 @@ async def restore_message(
     await ws_manager.broadcast_to_user(
         session["user_uuid"], {"type": "MSG_NEW", "data": {"message_id": message_id}}
     )
-    return ResponseSchema.ok(message="Restored.")
+    return ResponseSchema.ok(Messages="Restored.")
 
 
 @router.delete(
@@ -167,7 +167,7 @@ async def empty_trash(
     message_service: MessageService = Depends(get_message_service),
 ):
     count = message_service.empty_user_trash(session["user_uuid"])
-    return ResponseSchema.ok(message=f"Cleaned {count} items.")
+    return ResponseSchema.ok(Messages=f"Cleaned {count} items.")
 
 
 @router.delete(
@@ -180,7 +180,7 @@ async def delete_message(
     session=Depends(get_current_session),
     message_service: MessageService = Depends(get_message_service),
 ):
-    msg = Message.get_or_none(Message.id == message_id)
+    msg = Messages.get_or_none(Messages.id == message_id)
     if not msg or msg.deleted_at is not None:
         raise TaskNotFound("消息不存在")
     if msg.sender_uuid != session["user_uuid"]:
@@ -189,4 +189,4 @@ async def delete_message(
     await ws_manager.broadcast_to_user(
         session["user_uuid"], {"type": "MSG_DELETE", "data": {"message_id": message_id}}
     )
-    return ResponseSchema.ok(message="Moved to trash.")
+    return ResponseSchema.ok(Messages="Moved to trash.")

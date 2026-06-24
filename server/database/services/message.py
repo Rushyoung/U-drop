@@ -3,20 +3,20 @@ from typing import List, Optional
 
 from peewee import fn
 
-from core.exceptions import ForbiddenError
-from core.logger import logger
-from core.uploads_manager import uploads_manager
-from database.models import (
-    Attachment,
-    Device,
+from server.core.exceptions import ForbiddenError
+from server.core.logger import logger
+from server.core.uploads_manager import uploads_manager
+from server.database.models import (
+    Attachments,
+    Devices,
     FileInfo,
-    Hashtag,
-    Message,
-    MessageTag,
-    User,
+    Hashtags,
+    Messages,
+    MessagesTags,
+    Users,
 )
-from database.services.utils import get_time
-from schemas.messages import (
+from server.database.services.utils import get_time
+from server.schemas.messages import (
     BigFileReference,
     BigFileResponse,
     MessageResponse,
@@ -38,7 +38,7 @@ class MessageService:
     ) -> int:
         safe_content = html.escape(content) if content else None
 
-        msg = Message.create(
+        msg = Messages.create(
             sender_uuid=sender_uuid,
             device_id=device_id,
             type=message_type,
@@ -47,7 +47,7 @@ class MessageService:
         )
 
         if file_hash:
-            Attachment.create(
+            Attachments.create(
                 message_id=msg.id,
                 file_hash=file_hash,
                 display_name=file_name or "未命名文件",
@@ -67,25 +67,26 @@ class MessageService:
 
     def list_trash(self, user_uuid: str) -> List[MessageResponse]:
         rows = (
-            Message.select(Message, Device.device_name, Device.device_type)
-            .join(Device, on=(Message.device_id == Device.device_id))
+            Messages.select(Messages, Devices.device_name, Devices.device_type)
+            .join(Devices, on=(Messages.device_id == Devices.device_id))
             .where(
-                (Message.sender_uuid == user_uuid) & (Message.deleted_at.is_null(False))
+                (Messages.sender_uuid == user_uuid)
+                & (Messages.deleted_at.is_null(False))
             )
-            .order_by(Message.deleted_at.desc())
+            .order_by(Messages.deleted_at.desc())
             .execute()
         )
         return self._aggregate_attachments(rows)
 
     def _list_messages(self, user_uuid: str, deleted: bool = False, **kwargs):
-        base = (Message.sender_uuid == user_uuid) & (
-            Message.deleted_at.is_null()
+        base = (Messages.sender_uuid == user_uuid) & (
+            Messages.deleted_at.is_null()
             if not deleted
-            else Message.deleted_at.is_null(False)
+            else Messages.deleted_at.is_null(False)
         )
 
         keyword = kwargs.get("keyword")
-        hashtag = kwargs.get("hashtag")
+        Hashtags = kwargs.get("Hashtags")
         limit = kwargs.get("limit", 50)
         anchor_id = kwargs.get("anchor_id")
         mode = kwargs.get("mode", "initial")
@@ -94,42 +95,42 @@ class MessageService:
             safe_keyword = (
                 keyword.replace("/", "//").replace("%", "/%").replace("_", "/_")
             )
-            base = base & Message.content.contains(safe_keyword)
-        if hashtag:
+            base = base & Messages.content.contains(safe_keyword)
+        if Hashtags:
             base = base & (
-                Message.id.in_(
-                    MessageTag.select(MessageTag.message_id)
-                    .join(Hashtag, on=(MessageTag.tag_id == Hashtag.id))
-                    .where(Hashtag.tag_name == hashtag)
+                Messages.id.in_(
+                    MessagesTags.select(MessagesTags.message_id)
+                    .join(Hashtags, on=(MessagesTags.tag_id == Hashtags.id))
+                    .where(Hashtags.tag_name == Hashtags)
                 )
             )
 
         if mode == "initial" and anchor_id is not None:
             forward_limit = (limit // 2) + 1
             anchor_max = (
-                Message.select(fn.MAX(Message.id))
-                .where(base & (Message.id >= anchor_id))
+                Messages.select(fn.MAX(Messages.id))
+                .where(base & (Messages.id >= anchor_id))
                 .limit(forward_limit)
             )
             query = (
-                Message.select(Message, Device.device_name, Device.device_type)
-                .join(Device, on=(Message.device_id == Device.device_id))
-                .where(base & (Message.id <= anchor_max))
-                .order_by(Message.id.desc())
+                Messages.select(Messages, Devices.device_name, Devices.device_type)
+                .join(Devices, on=(Messages.device_id == Devices.device_id))
+                .where(base & (Messages.id <= anchor_max))
+                .order_by(Messages.id.desc())
                 .limit(limit)
             )
         else:
             query = (
-                Message.select(Message, Device.device_name, Device.device_type)
-                .join(Device, on=(Message.device_id == Device.device_id))
+                Messages.select(Messages, Devices.device_name, Devices.device_type)
+                .join(Devices, on=(Messages.device_id == Devices.device_id))
                 .where(base)
             )
             if anchor_id is not None:
                 if mode == "before":
-                    query = query.where(Message.id < anchor_id)
+                    query = query.where(Messages.id < anchor_id)
                 elif mode == "after":
-                    query = query.where(Message.id > anchor_id)
-            query = query.order_by(Message.id.desc()).limit(limit)
+                    query = query.where(Messages.id > anchor_id)
+            query = query.order_by(Messages.id.desc()).limit(limit)
 
         return query.execute()
 
@@ -139,15 +140,15 @@ class MessageService:
         message_ids = [r.id for r in rows]
 
         attach_rows = (
-            Attachment.select(
-                Attachment,
+            Attachments.select(
+                Attachments,
                 FileInfo.file_size,
                 FileInfo.mime_type,
                 FileInfo.storage_path,
             )
-            .join(FileInfo, on=(Attachment.file_hash == FileInfo.full_hash))
-            .where(Attachment.message_id.in_(message_ids))
-            .order_by(Attachment.message_id.desc(), Attachment.sort_order.asc())
+            .join(FileInfo, on=(Attachments.file_hash == FileInfo.full_hash))
+            .where(Attachments.message_id.in_(message_ids))
+            .order_by(Attachments.message_id.desc(), Attachments.sort_order.asc())
             .execute()
         )
 
@@ -198,16 +199,17 @@ class MessageService:
         self, user_uuid: str, message_id: int, file_hash: str, display_name: str
     ):
         is_paying = bool(
-            Attachment.select(Attachment.id)
-            .join(Message, on=(Attachment.message_id == Message.id))
+            Attachments.select(Attachments.id)
+            .join(Messages, on=(Attachments.message_id == Messages.id))
             .where(
-                (Message.sender_uuid == user_uuid) & (Attachment.file_hash == file_hash)
+                (Messages.sender_uuid == user_uuid)
+                & (Attachments.file_hash == file_hash)
             )
             .limit(1)
             .exists()
         )
 
-        Attachment.create(
+        Attachments.create(
             message_id=message_id, file_hash=file_hash, display_name=display_name
         )
         FileInfo.update(refer_count=FileInfo.refer_count + 1).where(
@@ -217,9 +219,9 @@ class MessageService:
         if not is_paying:
             file_info = FileInfo.get_or_none(FileInfo.full_hash == file_hash)
             if file_info:
-                User.update(used_storage=User.used_storage + file_info.file_size).where(
-                    User.uuid == user_uuid
-                ).execute()
+                Users.update(
+                    used_storage=Users.used_storage + file_info.file_size
+                ).where(Users.uuid == user_uuid).execute()
                 logger.info(
                     f"计费 | 用户 {user_uuid[:8]} 为新哈希支付配额: {file_info.file_size} Bytes"
                 )
@@ -229,14 +231,14 @@ class MessageService:
     def detach_attachment_safe(
         self, user_uuid: str, message_id: int, attachment_id: int
     ):
-        msg_row = Message.get_or_none(Message.id == message_id)
+        msg_row = Messages.get_or_none(Messages.id == message_id)
         if not msg_row or msg_row.sender_uuid != user_uuid:
             logger.warning(
                 f"越权告警 | 用户 {user_uuid[:8]} 试图剥离不属于他的消息附件: MessageID={message_id}"
             )
             return False
 
-        attach = Attachment.get_or_none(Attachment.id == attachment_id)
+        attach = Attachments.get_or_none(Attachments.id == attachment_id)
         if not attach:
             return False
 
@@ -247,50 +249,56 @@ class MessageService:
         FileInfo.update(refer_count=FileInfo.refer_count - 1).where(
             FileInfo.full_hash == file_hash
         ).execute()
-        Attachment.delete().where(Attachment.id == attachment_id).execute()
+        Attachments.delete().where(Attachments.id == attachment_id).execute()
         logger.info(f"清理 | 附件 {attachment_id} 已从消息 {message_id} 剥离")
 
         if not self._user_has_file(user_uuid, file_hash):
-            User.update(used_storage=User.used_storage - file_size).where(
-                User.uuid == user_uuid
+            Users.update(used_storage=Users.used_storage - file_size).where(
+                Users.uuid == user_uuid
             ).execute()
             logger.success(
                 f"计费 | 用户 {user_uuid[:8]} 已彻底释放哈希引用，配额返还: {file_size} Bytes"
             )
 
-        remaining = list(Attachment.select().where(Attachment.message_id == message_id))
+        remaining = list(
+            Attachments.select().where(Attachments.message_id == message_id)
+        )
         if not remaining and (not msg_row.content or not msg_row.content.strip()):
-            Message.delete().where(Message.id == message_id).execute()
+            Messages.delete().where(Messages.id == message_id).execute()
             logger.info(f"清理 | 消息 {message_id} 因内容为空已被自动清除")
 
         return True
 
     def _user_has_file(self, user_uuid: str, file_hash: str) -> bool:
         return bool(
-            Attachment.select(Attachment.id)
-            .join(Message, on=(Attachment.message_id == Message.id))
+            Attachments.select(Attachments.id)
+            .join(Messages, on=(Attachments.message_id == Messages.id))
             .where(
-                (Message.sender_uuid == user_uuid) & (Attachment.file_hash == file_hash)
+                (Messages.sender_uuid == user_uuid)
+                & (Attachments.file_hash == file_hash)
             )
             .limit(1)
             .exists()
         )
 
     def _hard_delete_single(self, message_id: int, user_uuid: str):
-        attachs = list(Attachment.select().where(Attachment.message_id == message_id))
+        attachs = list(Attachments.select().where(Attachments.message_id == message_id))
         for a in attachs:
             self.detach_attachment_safe(user_uuid, message_id, a.id)
 
     def restore_message(self, message_id: int, user_uuid: str):
-        msg = Message.get_or_none(Message.id == message_id)
+        msg = Messages.get_or_none(Messages.id == message_id)
         if not msg or msg.sender_uuid != user_uuid:
             raise ForbiddenError("消息不存在或无权恢复")
-        return Message.update(deleted_at=None).where(Message.id == message_id).execute()
+        return (
+            Messages.update(deleted_at=None).where(Messages.id == message_id).execute()
+        )
 
     def empty_user_trash(self, user_uuid: str) -> int:
         trash_ids = list(
-            Message.select(Message.id).where(
-                (Message.sender_uuid == user_uuid) & (Message.deleted_at.is_null(False))
+            Messages.select(Messages.id).where(
+                (Messages.sender_uuid == user_uuid)
+                & (Messages.deleted_at.is_null(False))
             )
         )
         count = 0
@@ -301,8 +309,8 @@ class MessageService:
 
     def delete_message(self, message_id: int) -> bool:
         return (
-            Message.update(deleted_at=get_time())
-            .where(Message.id == message_id)
+            Messages.update(deleted_at=get_time())
+            .where(Messages.id == message_id)
             .execute()
             > 0
         )
@@ -317,17 +325,19 @@ class MessageService:
                 FileInfo.mime_type,
                 FileInfo.refer_count,
                 fn.GROUP_CONCAT(
-                    Message.id.cast("text")
+                    Messages.id.cast("text")
                     + ":"
-                    + Attachment.id.cast("text")
+                    + Attachments.id.cast("text")
                     + ":"
-                    + Attachment.display_name,
+                    + Attachments.display_name,
                     "|",
                 ).alias("ref_info"),
             )
-            .join(Attachment, on=(FileInfo.full_hash == Attachment.file_hash))
-            .join(Message, on=(Attachment.message_id == Message.id))
-            .where((Message.sender_uuid == user_uuid) & (Message.deleted_at.is_null()))
+            .join(Attachments, on=(FileInfo.full_hash == Attachments.file_hash))
+            .join(Messages, on=(Attachments.message_id == Messages.id))
+            .where(
+                (Messages.sender_uuid == user_uuid) & (Messages.deleted_at.is_null())
+            )
             .group_by(FileInfo.full_hash)
             .order_by(FileInfo.file_size.desc())
             .limit(limit)

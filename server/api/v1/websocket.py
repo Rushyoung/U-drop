@@ -4,10 +4,10 @@ import time
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from core.exceptions import TokenExpired
-from core.logger import logger
-from core.websocket_manager import ws_manager
-from schemas.websocket import UdropWSMessage
+from server.core.exceptions import TokenExpired
+from server.core.logger import logger
+from server.core.websocket_manager import ws_manager
+from server.schemas.websocket import UdropWSMessage
 
 router = APIRouter(tags=["WebSocket 实时信令"])
 
@@ -104,7 +104,7 @@ async def websocket_endpoint(
                 break
 
             try:
-                message = json.loads(data)
+                Messages = json.loads(data)
             except json.JSONDecodeError:
                 continue
 
@@ -112,7 +112,7 @@ async def websocket_endpoint(
             if device_id:
                 AuthService().touch_device(device_id)
 
-            if message.get("type") == "PING":
+            if Messages.get("type") == "PING":
                 await websocket.send_text(
                     json.dumps({"type": "PONG", "timestamp": int(time.time())})
                 )

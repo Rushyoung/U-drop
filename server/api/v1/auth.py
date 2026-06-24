@@ -2,16 +2,16 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from core.exceptions import AccountRepeat
-from core.logger import logger
-from core.system_guard import feature_gate
-from core.websocket_manager import ws_manager
-from database.services.auth import AuthService
-from dependencies import (
+from server.core.exceptions import AccountRepeat
+from server.core.logger import logger
+from server.core.system_guard import feature_gate
+from server.core.websocket_manager import ws_manager
+from server.database.services.auth import AuthService
+from server.dependencies import (
     get_auth_service,
     get_current_session,
 )
-from schemas.auth import (
+from server.schemas.auth import (
     DeviceResponse,
     DeviceUpdateRequest,
     LoginData,
@@ -21,7 +21,7 @@ from schemas.auth import (
     UserPublic,
     UserSettingsUpdate,
 )
-from schemas.base import COMMON_ERRORS, ResponseSchema
+from server.schemas.base import COMMON_ERRORS, ResponseSchema
 
 router = APIRouter(tags=["Phase 1: 账号与设备管理"])
 
@@ -59,7 +59,7 @@ def login(req: LoginRequest, auth: AuthService = Depends(get_auth_service)):
 @router.post("/logout", response_model=ResponseSchema[None], summary="注销登录")
 def logout(req: LogoutRequest, auth: AuthService = Depends(get_auth_service)):
     auth.logout(req.bearer)
-    return ResponseSchema.ok(message="Successfully logged out.")
+    return ResponseSchema.ok(Messages="Successfully logged out.")
 
 
 @router.get(
@@ -85,7 +85,7 @@ async def get_me(
     "/settings",
     response_model=ResponseSchema[None],
     summary="更新偏好设置",
-    description="支持修改回收站清理天数、临时 Session 寿命及滑动窗口续期天数。",
+    description="支持修改回收站清理天数、临时 Sessions 寿命及滑动窗口续期天数。",
 )
 async def update_settings(
     req: UserSettingsUpdate,
@@ -99,11 +99,11 @@ async def update_settings(
         temp_expire_hours=req.temp_expire_hours,
         sliding_window_days=req.sliding_window_days,
     )
-    return ResponseSchema.ok(message="Settings updated.")
+    return ResponseSchema.ok(Messages="Settings updated.")
 
 
 @router.put(
-    "/device",
+    "/Devices",
     response_model=ResponseSchema[None],
     summary="更新当前设备名称",
     description="修改当前登录会话所关联的设备显示名称。会通过 WebSocket 实时通知所有在线端同步缓存。",
@@ -126,7 +126,7 @@ async def update_current_device(
         bump_seq=True,
     )
 
-    return ResponseSchema.ok(message="Device name updated and sync broadcast sent.")
+    return ResponseSchema.ok(Messages="Devices name updated and sync broadcast sent.")
 
 
 @router.put("/password", response_model=ResponseSchema[None], summary="修改登录密码")
@@ -139,7 +139,7 @@ async def change_password(
     auth_service.change_password(
         session["user_uuid"], req.old_password, req.new_password
     )
-    return ResponseSchema.ok(message="Password changed.")
+    return ResponseSchema.ok(Messages="Password changed.")
 
 
 @router.get(
@@ -167,5 +167,5 @@ async def revoke_device(
     """强制注销某个设备，使其所有会话失效并踢出"""
     success = auth_service.revoke_device(session["user_uuid"], device_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Device not found or access denied")
-    return ResponseSchema.ok(message="Device revoked successfully.")
+        raise HTTPException(status_code=404, detail="Devices not found or access denied")
+    return ResponseSchema.ok(Messages="Devices revoked successfully.")

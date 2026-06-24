@@ -1,21 +1,21 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-
-from core.logger import logger
-from database.models import User
-from database.services.auth import AuthService
-from database.services.system import SystemService
-from database.services.utils import AuthManager
-from dependencies import get_auth_service, get_current_admin, get_system_service
-from schemas.base import ResponseSchema
-from schemas.system import (
+from server.schemas.base import ResponseSchema
+from server.schemas.system import (
     FactoryResetRequest,
     SystemSettingsUpdateRequest,
     UserManageResponse,
     UserQuotaUpdateRequest,
     UserStatusUpdateRequest,
 )
+
+from server.core.logger import logger
+from server.database.models import Users
+from server.database.services.auth import AuthService
+from server.database.services.system import SystemService
+from server.database.services.utils import AuthManager
+from server.dependencies import get_auth_service, get_current_admin, get_system_service
 
 router = APIRouter(
     tags=["Manage: 后台管理接口"], dependencies=[Depends(get_current_admin)]
@@ -43,7 +43,7 @@ async def update_manage_settings(
         auth_rate_limit=req.auth_rate_limit,
         default_token_expire=req.default_token_expire,
     )
-    return ResponseSchema.ok(message="Settings updated.")
+    return ResponseSchema.ok(Messages="Settings updated.")
 
 
 @router.get(
@@ -52,7 +52,7 @@ async def update_manage_settings(
     summary="用户列表管理",
 )
 async def list_users(auth_service: AuthService = Depends(get_auth_service)):
-    rows = list(User.select())
+    rows = list(Users.select())
     users = [
         UserManageResponse(
             uuid=r.uuid,
@@ -81,7 +81,7 @@ async def update_user_quota(
 ):
     """管理员手动调整用户的最大存储限制 (Bytes)"""
     auth_service.admin_update_quota(current_admin.uuid, user_uuid, req.storage_quota)
-    return ResponseSchema.ok(message="User quota updated.")
+    return ResponseSchema.ok(Messages="Users quota updated.")
 
 
 @router.put(
@@ -98,7 +98,7 @@ async def update_user_status(
     """管理员禁用用户后，该用户将无法登录且当前会话立即失效"""
     auth_service.admin_update_status(current_admin.uuid, user_uuid, req.is_active)
     return ResponseSchema.ok(
-        message=f"User {'enabled' if req.is_active else 'disabled'}."
+        Messages=f"Users {'enabled' if req.is_active else 'disabled'}."
     )
 
 
@@ -117,7 +117,7 @@ async def delete_user_permanently(
     会自动扣减关联文件的引用计数，并踢出该用户所有在线设备。
     """
     auth_service.admin_hard_delete_user(current_admin.uuid, user_uuid)
-    return ResponseSchema.ok(message="User and associated resources destroyed.")
+    return ResponseSchema.ok(Messages="Users and associated resources destroyed.")
 
 
 @router.post(
@@ -142,5 +142,5 @@ async def factory_reset(
 
     system_service.factory_reset()
     return ResponseSchema.ok(
-        message="Factory reset complete. System is now uninitialized."
+        Messages="Factory reset complete. System is now uninitialized."
     )

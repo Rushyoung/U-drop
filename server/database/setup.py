@@ -1,6 +1,6 @@
 from server.core.logger import logger
 from server.database.connect import Database
-from server.database.models import ALL_MODELS, SysSetting
+from server.database.models import ALL_MODELS, SysSettings
 
 
 def setup():
@@ -18,9 +18,9 @@ def setup():
     if not users_table_exists:
         logger.info("检测到全新数据库，正在铺设底座...")
         db.create_tables(ALL_MODELS)
-        SysSetting.insert(key="allow_registration", value="true").execute()
-        SysSetting.insert(key="auth_rate_limit", value="5").execute()
-        SysSetting.insert(key="default_token_expire", value="86400").execute()
+        SysSettings.insert(key="allow_registration", value="true").execute()
+        SysSettings.insert(key="auth_rate_limit", value="5").execute()
+        SysSettings.insert(key="default_token_expire", value="86400").execute()
         logger.success("底座铺设完成。")
     else:
         db.create_tables(ALL_MODELS)

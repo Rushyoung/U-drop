@@ -1,12 +1,12 @@
 import os
 import time
 
-from core.config import settings
-from core.logger import logger
-from core.uploads_manager import uploads_manager
-from database.models import Attachment, FileInfo, Message, User
-from database.services.auth import AuthService
-from database.services.file import FileService
+from server.core.config import settings
+from server.core.logger import logger
+from server.core.uploads_manager import uploads_manager
+from server.database.models import Attachments, FileInfo, Messages, Users
+from server.database.services.auth import AuthService
+from server.database.services.file import FileService
 from tasks.register import register
 
 
@@ -15,31 +15,31 @@ async def garbage_collection():
     AuthService.clean_expired_sessions()
 
     total_logic_cleaned = 0
-    for user in User.select(User.uuid, User.trash_expire_days):
+    for user in Users.select(Users.uuid, Users.trash_expire_days):
         user_uuid = user.uuid
         expire_days = user.trash_expire_days
         cutoff = time.time() - (expire_days * 86400)
 
         expired_msgs = list(
-            Message.select(Message.id, Message.id.alias("mid")).where(
-                (Message.sender_uuid == user_uuid)
-                & (Message.deleted_at.is_null(False))
-                & (Message.deleted_at < cutoff)
+            Messages.select(Messages.id, Messages.id.alias("mid")).where(
+                (Messages.sender_uuid == user_uuid)
+                & (Messages.deleted_at.is_null(False))
+                & (Messages.deleted_at < cutoff)
             )
         )
         for msg_row in expired_msgs:
             mid = msg_row.id
             attachs = list(
-                Attachment.select(Attachment, FileInfo.file_size)
-                .join(FileInfo, on=(Attachment.file_hash == FileInfo.full_hash))
-                .where(Attachment.message_id == mid)
+                Attachments.select(Attachments, FileInfo.file_size)
+                .join(FileInfo, on=(Attachments.file_hash == FileInfo.full_hash))
+                .where(Attachments.message_id == mid)
             )
             total_size_freed = sum(a.file_size for a in attachs if a.file_size)
-            Attachment.delete().where(Attachment.message_id == mid).execute()
-            Message.delete().where(Message.id == mid).execute()
+            Attachments.delete().where(Attachments.message_id == mid).execute()
+            Messages.delete().where(Messages.id == mid).execute()
             if total_size_freed > 0:
-                User.update(used_storage=User.used_storage - total_size_freed).where(
-                    User.uuid == user_uuid
+                Users.update(used_storage=Users.used_storage - total_size_freed).where(
+                    Users.uuid == user_uuid
                 ).execute()
             total_logic_cleaned += 1
 

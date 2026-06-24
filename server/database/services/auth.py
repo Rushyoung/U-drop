@@ -2,16 +2,23 @@ import secrets
 import uuid
 from threading import Lock
 
-from core.exceptions import (
+from server.core.exceptions import (
     AccountRepeat,
     ForbiddenError,
     LoginError,
     TokenExpired,
 )
-from core.logger import logger
-from database.models import Attachments, Devices, FileInfo, Messages, Sessions, Users
-from database.services.utils import ONE_DAY, AuthManager, get_time
-from schemas.auth import LoginData
+from server.core.logger import logger
+from server.database.models import (
+    Attachments,
+    Devices,
+    FileInfo,
+    Messages,
+    Sessions,
+    Users,
+)
+from server.database.services.utils import ONE_DAY, AuthManager, get_time
+from server.schemas.auth import LoginData
 
 _SESSION_CACHE: dict[str, dict] = {}
 _SESSION_LOCK = Lock()
@@ -320,7 +327,7 @@ class AuthService:
 
         rows = (
             Attachments.select(Attachments.file_hash)
-            .join(Messages, on=(Attachments.message == Messages.id))
+            .join(Messages, on=(Attachments.Messages == Messages.id))
             .where(Messages.sender_uuid == target_uuid)
             .execute()
         )
@@ -347,9 +354,9 @@ class AuthService:
         logger.success(f"审计 | 用户销毁完成。清理了 {kicked_count} 个活跃 Sessions。")
 
     def change_password(self, user_uuid: str, old_password: str, new_password: str):
-        User = Users.get_or_none(Users.uuid == user_uuid)
-        if not User or not AuthManager.verify_password_hash(
-            old_password, User.password_hash
+        Users = Users.get_or_none(Users.uuid == user_uuid)
+        if not Users or not AuthManager.verify_password_hash(
+            old_password, Users.password_hash
         ):
             logger.warning(f"密码修改失败 | 用户 {user_uuid[:8]} 旧密码验证不通过")
             raise LoginError()

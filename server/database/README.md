@@ -46,7 +46,7 @@ CREATE TABLE users (
     role TEXT DEFAULT 'user',             -- admin | user
     is_active INTEGER DEFAULT 1,
     created_at INTEGER NOT NULL,           -- Unix timestamp
-    temp_expire_hours INTEGER DEFAULT 24,  -- 临时 Session 有效小时
+    temp_expire_hours INTEGER DEFAULT 24,  -- 临时 Sessions 有效小时
     sliding_window_days INTEGER DEFAULT 30, -- 滑动窗口续期天数
     trash_expire_days INTEGER DEFAULT 30,  -- 回收站保留天数
     storage_quota BIGINT DEFAULT 5368709120, -- 默认 5GB

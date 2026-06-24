@@ -12,7 +12,7 @@ class ResponseSchema(BaseModel, Generic[T]):
     code: int = Field(
         200, description="状态码: 200成功, 401未授权, 403拒绝, 404未找到, 500错误"
     )
-    message: str = Field("success", description="操作结果提示文本")
+    Messages: str = Field("success", description="操作结果提示文本")
     data: Optional[T] = Field(None, description="业务数据载荷")
 
     model_config = {
@@ -20,19 +20,19 @@ class ResponseSchema(BaseModel, Generic[T]):
             "example": {
                 "success": True,
                 "code": 200,
-                "message": "Operation successful",
+                "Messages": "Operation successful",
                 "data": None,
             }
         }
     }
 
     @classmethod
-    def ok(cls, data: Any = None, message: str = "success"):
-        return cls(success=True, code=200, message=message, data=data)
+    def ok(cls, data: Any = None, Messages: str = "success"):
+        return cls(success=True, code=200, Messages=Messages, data=data)
 
     @classmethod
-    def fail(cls, message: str = "error", code: int = 500):
-        return cls(success=False, code=code, message=message, data=None)
+    def fail(cls, Messages: str = "error", code: int = 500):
+        return cls(success=False, code=code, Messages=Messages, data=None)
 
 
 class ErrorResponse(BaseModel):
@@ -40,7 +40,7 @@ class ErrorResponse(BaseModel):
 
     success: bool = Field(False, description="是否成功")
     code: int = Field(..., description="业务错误码")
-    message: str = Field(..., description="错误原因描述")
+    Messages: str = Field(..., description="错误原因描述")
     data: None = None
 
 

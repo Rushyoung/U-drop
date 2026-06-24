@@ -10,29 +10,29 @@ from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 
-from core.config import settings
-from core.exceptions import (
+from server.core.config import settings
+from server.core.exceptions import (
     ForbiddenError,
     HashMismatch,
     InternalError,
     TaskNotFound,
 )
-from core.logger import logger
-from core.native_wrapper import native_core
-from core.uploads_manager import UploadTask, uploads_manager
-from core.websocket_manager import ws_manager
-from database.models import Attachment, Message
-from database.services.auth import AuthService
-from database.services.file import FileService
-from database.services.message import MessageService
-from dependencies import (
+from server.core.logger import logger
+from server.core.native_wrapper import native_core
+from server.core.uploads_manager import UploadTasks, uploads_manager
+from server.core.websocket_manager import ws_manager
+from server.database.models import Attachments, Messages
+from server.database.services.auth import AuthService
+from server.database.services.file import FileService
+from server.database.services.message import MessageService
+from server.dependencies import (
     get_auth_service,
     get_current_session,
     get_file_service,
     get_message_service,
 )
-from schemas.base import COMMON_ERRORS, ResponseSchema
-from schemas.messages import BigFileResponse
+from server.schemas.base import COMMON_ERRORS, ResponseSchema
+from server.schemas.messages import BigFileResponse
 
 router = APIRouter(tags=["Phase 3: 极速文件流与配额管理"])
 
@@ -53,7 +53,7 @@ async def get_user_lock(user_uuid: str) -> asyncio.Lock:
 
 
 async def _check_message_valid(message_id: int, message_service: MessageService):
-    msg = Message.get_or_none(Message.id == message_id)
+    msg = Messages.get_or_none(Messages.id == message_id)
     if not msg or msg.deleted_at is not None:
         raise TaskNotFound("归属消息已进入回收站或不存在，无法继续上传")
 
@@ -65,7 +65,7 @@ async def _check_quota(user_uuid: str, total_size: int, auth_service: AuthServic
 
 
 async def _bind_file_to_message(
-    task: UploadTask,
+    task: UploadTasks,
     file_hash: str,
     message_service: MessageService,
     auth_service: AuthService,
@@ -112,7 +112,7 @@ async def init_upload(
         temp_dir.mkdir(parents=True, exist_ok=True)
         temp_path = temp_dir / f"{upload_id}.tmp"
         uploads_manager.add_task(
-            UploadTask(
+            UploadTasks(
                 upload_id=upload_id,
                 user_uuid=session["user_uuid"],
                 message_id=message_id,
@@ -307,7 +307,7 @@ async def detach_attachment(
 
     if not success:
         raise TaskNotFound("附件或引用关系不存在")
-    return ResponseSchema.ok(message="Attachment detached and quota processed.")
+    return ResponseSchema.ok(Messages="Attachments detached and quota processed.")
 
 
 @router.get(
@@ -324,16 +324,16 @@ async def download_attachment(
 ):
     """逻辑 ID 寻址下载：包含所有权校验"""
     # 1. 获取附件详情
-    attach = Attachment.get_or_none(Attachment.id == attachment_id)
+    attach = Attachments.get_or_none(Attachments.id == attachment_id)
     if not attach:
         raise TaskNotFound("附件不存在")
 
-    msg = Message.get_or_none(Message.id == attach.message_id)
+    msg = Messages.get_or_none(Messages.id == attach.message_id)
     if not msg or msg.sender_uuid != session["user_uuid"]:
         logger.warning(
             f"越权下载拦截 | 用户 {session['user_uuid'][:8]} 试图下载附件 {attachment_id}"
         )
-        raise ForbiddenError("You don't have access to this attachment")
+        raise ForbiddenError("You don't have access to this Attachments")
 
     full_hash = attach.file_hash
     path, _ = await file_service.get_physical_path_and_name(full_hash)
@@ -365,11 +365,11 @@ async def get_attachment_thumbnail(
 ):
     """逻辑 ID 寻址缩略图：包含所有权校验"""
     # 1. 鉴权与获取哈希
-    attach = Attachment.get_or_none(Attachment.id == attachment_id)
+    attach = Attachments.get_or_none(Attachments.id == attachment_id)
     if not attach:
         raise TaskNotFound("附件不存在")
 
-    msg = Message.get_or_none(Message.id == attach.message_id)
+    msg = Messages.get_or_none(Messages.id == attach.message_id)
     if not msg or msg.sender_uuid != session["user_uuid"]:
         raise ForbiddenError("Access denied")
 

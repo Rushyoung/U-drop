@@ -1,22 +1,22 @@
 import uuid
 
-from core.config import settings
-from core.logger import logger
-from core.system_guard import SystemGuard
-from database.models import (
-    Attachment,
-    Device,
+from server.core.config import settings
+from server.core.logger import logger
+from server.core.system_guard import SystemGuard
+from server.database.models import (
+    Attachments,
+    Devices,
     FileInfo,
-    Hashtag,
-    Message,
-    MessageTag,
-    Session,
-    Share,
-    SysSetting,
-    UploadTask,
-    User,
+    Hashtags,
+    Messages,
+    MessagesTags,
+    Sessions,
+    Shares,
+    SysSettings,
+    UploadTasks,
+    Users,
 )
-from database.services.utils import AuthManager, get_time
+from server.database.services.utils import AuthManager, get_time
 
 
 class SystemService:
@@ -24,18 +24,18 @@ class SystemService:
         SystemGuard.sync(self.get_all_settings_dict(), self.has_admin())
 
     def has_admin(self) -> bool:
-        return User.select().where(User.role == "admin").exists()
+        return Users.select().where(Users.role == "admin").exists()
 
     def get_all_settings_dict(self) -> dict[str, str]:
-        rows = SysSetting.select()
+        rows = SysSettings.select()
         return {row.key: row.value for row in rows}
 
     def get_setting(self, key: str, default: str = "") -> str:
-        row = SysSetting.get_or_none(SysSetting.key == key)
+        row = SysSettings.get_or_none(SysSettings.key == key)
         return row.value if row else default
 
     def set_setting(self, key: str, value: str):
-        (SysSetting.insert(key=key, value=value).on_conflict("replace").execute())
+        (SysSettings.insert(key=key, value=value).on_conflict("replace").execute())
 
     def get_status(self) -> dict:
         return {
@@ -63,7 +63,7 @@ class SystemService:
 
         admin_uuid = str(uuid.uuid4())
         password_hash = AuthManager.get_password_hash(password)
-        User.create(
+        Users.create(
             uuid=admin_uuid,
             account=account,
             password_hash=password_hash,
@@ -118,20 +118,20 @@ class SystemService:
                 os.remove(item)
 
         for model in [
-            Attachment,
-            Share,
-            MessageTag,
-            Hashtag,
-            Message,
+            Attachments,
+            Shares,
+            MessagesTags,
+            Hashtags,
+            Messages,
             FileInfo,
-            Session,
-            Device,
-            User,
-            UploadTask,
+            Sessions,
+            Devices,
+            Users,
+            UploadTasks,
         ]:
             model.delete().execute()
 
-        User._meta.database.execute_sql("DELETE FROM sqlite_sequence")
+        Users._meta.database.execute_sql("DELETE FROM sqlite_sequence")
 
         self._trigger_guard_sync()
         logger.warning("系统已执行工厂重置，所有数据已清空。")

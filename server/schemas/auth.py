@@ -17,8 +17,8 @@ class UserPublic(UserBase):
     storage_quota: int = Field(5368709120, description="总存储配额 (Bytes)")
     used_storage: int = Field(0, description="已用存储空间 (Bytes)")
     sync_seq: int = Field(0, description="当前同步序列号 (用于端侧对齐)")
-    temp_expire_hours: int = Field(24, description="临时 Session 有效小时数")
-    sliding_window_days: int = Field(30, description="长效 Session 续期天数")
+    temp_expire_hours: int = Field(24, description="临时 Sessions 有效小时数")
+    sliding_window_days: int = Field(30, description="长效 Sessions 续期天数")
 
 
 class UserInternal(UserPublic):
@@ -32,7 +32,7 @@ class UserSettingsUpdate(BaseModel):
         None, ge=1, le=365, description="回收站保留天数 (1-365)"
     )
     temp_expire_hours: Optional[int] = Field(
-        None, ge=1, le=24, description="临时 Session 寿命 (1-24小时)"
+        None, ge=1, le=24, description="临时 Sessions 寿命 (1-24小时)"
     )
     sliding_window_days: Optional[int] = Field(
         None, ge=1, le=365, description="滑动窗口续期天数 (1-365)"

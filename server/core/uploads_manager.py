@@ -4,7 +4,7 @@ from typing import Dict, Optional, List
 from pydantic import BaseModel
 from server.core.logger import logger
 
-class UploadTask(BaseModel):
+class UploadTasks(BaseModel):
     """内存中的上传任务模型"""
     upload_id: str
     user_uuid: str
@@ -20,12 +20,12 @@ class UploadTask(BaseModel):
 class UploadsManager:
     """管理内存中的上传任务"""
     def __init__(self):
-        self._tasks: Dict[str, UploadTask] = {}
+        self._tasks: Dict[str, UploadTasks] = {}
 
-    def add_task(self, task: UploadTask):
+    def add_task(self, task: UploadTasks):
         self._tasks[task.upload_id] = task
 
-    def get_task(self, upload_id: str) -> Optional[UploadTask]:
+    def get_task(self, upload_id: str) -> Optional[UploadTasks]:
         return self._tasks.get(upload_id)
 
     def update_progress(self, upload_id: str, received_size: int):
@@ -44,10 +44,10 @@ class UploadsManager:
             del self._tasks[upload_id]
             logger.info(f"Upload task removed: {upload_id}")
 
-    def list_user_tasks(self, user_uuid: str) -> List[UploadTask]:
+    def list_user_tasks(self, user_uuid: str) -> List[UploadTasks]:
         return [t for t in self._tasks.values() if t.user_uuid == user_uuid]
 
-    def list_by_message_id(self, message_id: int) -> List[UploadTask]:
+    def list_by_message_id(self, message_id: int) -> List[UploadTasks]:
         """筛选属于特定消息的上传任务"""
         return [t for t in self._tasks.values() if t.message_id == message_id]
 

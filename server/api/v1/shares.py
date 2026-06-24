@@ -3,11 +3,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse
 
-from core.logger import logger
-from database.services.share import ShareService
-from dependencies import get_current_session, get_share_service
-from schemas.base import ResponseSchema
-from schemas.shares import (
+from server.core.logger import logger
+from server.database.services.share import SharesService
+from server.dependencies import get_current_session, get_share_service
+from server.schemas.base import ResponseSchema
+from server.schemas.shares import (
     ShareCreateRequest,
     ShareCreateResponse,
     ShareItemResponse,
@@ -25,7 +25,7 @@ async def create_file_share_link(
     req: ShareCreateRequest,
     request: Request,
     session=Depends(get_current_session),
-    share_service: ShareService = Depends(get_share_service),
+    share_service: SharesService = Depends(get_share_service),
 ):
     """
     为指定的附件 ID 生成分享票据。
@@ -60,7 +60,7 @@ async def create_file_share_link(
 )
 async def list_my_shares(
     session=Depends(get_current_session),
-    share_service: ShareService = Depends(get_share_service),
+    share_service: SharesService = Depends(get_share_service),
 ):
     rows = share_service.list_user_shares(session["user_uuid"])
     return ResponseSchema.ok(
@@ -74,17 +74,17 @@ async def list_my_shares(
 async def revoke_share_link(
     share_id: str,
     session=Depends(get_current_session),
-    share_service: ShareService = Depends(get_share_service),
+    share_service: SharesService = Depends(get_share_service),
 ):
     share_service.revoke_share(share_id, session["user_uuid"])
-    return ResponseSchema.ok(message="分享已撤销")
+    return ResponseSchema.ok(Messages="分享已撤销")
 
 
 @router.get("/{share_id}", summary="解析分享链接并下载")
 async def download_shared_file(
     share_id: str,
     pwd: Optional[str] = None,
-    share_service: ShareService = Depends(get_share_service),
+    share_service: SharesService = Depends(get_share_service),
 ):
     path, original_name = await share_service.get_shared_file(share_id, password=pwd)
 
